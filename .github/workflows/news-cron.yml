@@ -25,14 +25,20 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests python-dotenv
+          pip install requests
+
+      - name: Debug environment variables
+        run: |
+          echo "Checking environment variables:"
+          echo "DEEPSEEK_API_KEY length: ${#DEEPSEEK_API_KEY}"
+          echo "TELEGRAM_BOT_TOKEN length: ${#TELEGRAM_BOT_TOKEN}" 
+          echo "TELEGRAM_CHANNEL_ID: $TELEGRAM_CHANNEL_ID"
 
       - name: Run news monitoring
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          # GITHUB_TOKEN удаляем отсюда - он доступен автоматически
         run: |
           python src/main.py monitor
 
@@ -58,6 +64,5 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
-          # GITHUB_TOKEN удаляем отсюда
         run: |
           python src/main.py publish
