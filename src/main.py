@@ -104,7 +104,6 @@ class AsyncYandexGPTMonitor:
         
         prompt = f"""
         Найди САМУЮ интересную новость за последние 1-2 часа в сфере искусственного интеллекта.
-        Время суток: {context}.
         
         Критерии:
         - Новости от Google, Microsoft, OpenAI, Meta, Yandex, Apple, Amazon, DeepSeek
@@ -113,17 +112,18 @@ class AsyncYandexGPTMonitor:
         
         Формат для Telegram (ОЧЕНЬ ВАЖНО - соблюдай точно!):
         
-        🚀 [Заголовок с эмодзи]
+        🚀 [Интересный заголовок с эмодзи]
         
-        📝 [Суть новости: 3-4 предложения. Будь конкретным!]
+        📝 [Суть новости: 3-4 предложения. Будь конкретным! Упоминай технологии, цифры, даты]
         
-        💡 [Значение для отрасли: 1-2 предложения]
+        💡 [Практическое значение: 1-2 предложения]
         
-        🔗 [Ссылка на источник]
+        🔗 [Ссылка на официальный источник]
         
-        🔖 [3-5 хештегов]
+        🔖 [3-5 релевантных хештегов на русском/английском]
         
-        НИЧЕГО не пиши после хештегов! Стоп на хештегах.
+        НИЧЕГО не пиши перед заголовком и после хештегов!
+        Заголовок должен начинаться сразу с 🚀
         """
         
         return await self.yandex_gpt_call(prompt)
@@ -136,7 +136,7 @@ async def send_to_telegram_async(message, session):
             "chat_id": TELEGRAM_CHANNEL_ID,
             "text": message,
             "parse_mode": "HTML",
-            "disable_web_page_preview": True  # ← ОТКЛЮЧАЕМ ПРЕВЬЮ ССЫЛОК
+            "disable_web_page_preview": True  # Отключаем превью ссылок
         }
         
         async with session.post(url, json=payload) as response:
@@ -154,6 +154,7 @@ async def send_to_telegram_async(message, session):
 async def publish_hourly_news(hour):
     """Публикация новости для конкретного часа"""
     logger.info(f"📅 Запуск публикации для {hour:02d}:00...")
+    start_time = time.time()
     
     async with AsyncYandexGPTMonitor() as monitor:
         async with aiohttp.ClientSession() as telegram_session:
@@ -161,33 +162,39 @@ async def publish_hourly_news(hour):
             news_content = await monitor.search_ai_news(hour)
             
             if news_content:
-                # ОЧИЩАЕМ текст от всего после хештегов
+                # ОЧИЩАЕМ текст - убираем всё перед 🚀 и после хештегов
                 lines = news_content.split('\n')
                 cleaned_content = []
+                start_adding = False
                 stop_adding = False
                 
                 for line in lines:
-                    if line.strip().startswith('🔖') or line.strip().startswith('#'):
-                        cleaned_content.append(line)
-                        # Прекращаем добавлять после хештегов
-                        stop_adding = True
-                    elif not stop_adding:
-                        cleaned_content.append(line)
+                    line = line.strip()
+                    if not line:
+                        continue
+                        
+                    # Начинаем добавлять с заголовка 🚀
+                    if line.startswith('🚀'):
+                        start_adding = True
+                    
+                    if start_adding and not stop_adding:
+                        if line.startswith('🔖') or line.startswith('#'):
+                            cleaned_content.append(line)
+                            stop_adding = True  # Стоп после хештегов
+                        else:
+                            cleaned_content.append(line)
                 
                 cleaned_text = '\n'.join(cleaned_content)
                 
-                # Форматируем сообщение БЕЗ лишнего текста после хештегов
-                telegram_message = f"""
-🤖 <b>СВЕЖАЯ НОВОСТЬ ИИ</b> • {hour:02d}:00 МСК
-
-{cleaned_text}
-                """
+                # Форматируем финальное сообщение (БЕЗ верхних двух строк)
+                telegram_message = f"{cleaned_text}"
                 
                 if await send_to_telegram_async(telegram_message, telegram_session):
-                    logger.info(f"🎉 Новость для {hour:02d}:00 опубликована!")
+                    execution_time = time.time() - start_time
+                    logger.info(f"🎉 Новость для {hour:02d}:00 опубликована! ({execution_time:.1f} сек)")
                     
                     # Сохраняем лог
-                    log_entry = f"{datetime.now()}: {hour:02d}:00 - Успех (~{monitor.token_usage} токенов)\n"
+                    log_entry = f"{datetime.now()}: {hour:02d}:00 - {execution_time:.1f} сек, ~{monitor.token_usage} токенов\n"
                     with open("news_log.txt", "a", encoding="utf-8") as f:
                         f.write(log_entry)
                 else:
@@ -199,7 +206,8 @@ async def main():
     """Основная асинхронная функция"""
     logger.info("🚀 Запуск асинхронного AI News Monitor")
     logger.info("⏰ Расписание: 6:00-18:00 МСК (12 публикаций в день)")
-    logger.info(f"💳 Баланс: 3,980 руб • Расчетный срок: 4-5 месяцев")
+    logger.info("💳 Баланс: 3,980 руб • Срок: 4-5 месяцев")
+    logger.info("📊 GitHub Actions: 60 мин/день • 1800 мин/мес (в пределах лимита 2000 мин)")
     
     # Определяем текущий час по МСК
     msk_time = datetime.now(timezone(timedelta(hours=3)))
