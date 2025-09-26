@@ -2,11 +2,15 @@ import os
 import aiohttp
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
+import time
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Конфигурация
@@ -23,14 +27,15 @@ class AsyncYandexGPTMonitor:
             "Content-Type": "application/json"
         }
         self.session = None
-        self.token_usage = 0  # Счетчик токенов для мониторинга затрат
+        self.token_usage = 0
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.session.close()
+        if self.session:
+            await self.session.close()
 
     async def yandex_gpt_call(self, prompt, max_tokens=2000):
         """Асинхронный вызов YandexGPT API"""
@@ -54,13 +59,13 @@ class AsyncYandexGPTMonitor:
                 ]
             }
 
-            logger.info(f"🔍 Отправка асинхронного запроса ({len(prompt)} символов)")
+            logger.info(f"🔍 Отправка запроса к YandexGPT ({len(prompt)} символов)")
             
             async with self.session.post(
                 self.api_url, 
                 headers=self.headers, 
                 json=data, 
-                timeout=aiohttp.ClientTimeout(total=60)
+                timeout=aiohttp.ClientTimeout(total=120)
             ) as response:
                 
                 if response.status == 200:
@@ -68,7 +73,7 @@ class AsyncYandexGPTMonitor:
                     if 'result' in result and 'alternatives' in result['result']:
                         content = result['result']['alternatives'][0]['message']['text']
                         
-                        # Примерный подсчет токенов (1 токен ≈ 4 символа на русском)
+                        # Примерный подсчет токенов
                         estimated_tokens = len(content) // 4 + len(prompt) // 4
                         self.token_usage += estimated_tokens
                         
@@ -77,7 +82,7 @@ class AsyncYandexGPTMonitor:
                         
                         return content
                     else:
-                        logger.error(f"❌ Неверный формат ответа")
+                        logger.error(f"❌ Неверный формат ответа: {result}")
                         return None
                 else:
                     error_text = await response.text()
@@ -85,7 +90,7 @@ class AsyncYandexGPTMonitor:
                     return None
                     
         except asyncio.TimeoutError:
-            logger.error("❌ Таймаут запроса к YandexGPT")
+            logger.error("❌ Таймаут запроса к YandexGPT (120 секунд)")
             return None
         except Exception as e:
             logger.error(f"❌ Ошибка вызова YandexGPT: {e}")
@@ -93,49 +98,37 @@ class AsyncYandexGPTMonitor:
 
     async def search_ai_news(self, hour):
         """Поиск новостей для конкретного часа"""
-        # Разные промпты для разного времени суток
         time_contexts = {
-            6: "утренние",
-            7: "утренние", 
-            8: "утренние",
-            9: "дневные",
-            10: "дневные",
-            11: "дневные", 
-            12: "обеденные",
-            13: "дневные",
-            14: "дневные",
-            15: "дневные",
-            16: "вечерние",
-            17: "вечерние",
-            18: "вечерние"
+            0: "ночные", 1: "ночные", 2: "ночные", 3: "ночные", 4: "ранние утренние", 5: "ранние утренние",
+            6: "утренние", 7: "утренние", 8: "утренние", 9: "дневные", 10: "дневные", 11: "дневные",
+            12: "обеденные", 13: "дневные", 14: "дневные", 15: "дневные", 16: "вечерние", 17: "вечерние",
+            18: "вечерние", 19: "поздние вечерние", 20: "поздние вечерние", 21: "ночные", 22: "ночные", 23: "ночные"
         }
         
         context = time_contexts.get(hour, "последние")
         
         prompt = f"""
         Найди САМУЮ интересную новость за последние 1-2 часа в сфере искусственного интеллекта.
-        Время суток: {context}.
+        Сейчас {hour:02d}:00 по МСК ({context} часы).
         
         Критерии:
         - Новости от Google, Microsoft, OpenAI, Meta, Yandex, Apple, Amazon, DeepSeek
         - Технические прорывы, крупные обновления, исследования
         - Практическая значимость
         
-        Формат для Telegram:
+        Формат для Telegram (соблюдай точно!):
         
-        🕐 {hour:02d}:00 • {context.capitalize()} обновление
+        🚀 [Интересный заголовок с эмодзи]
         
-        🚀 [Заголовок с эмодзи]
+        📝 [Суть новости: 3-4 предложения. Будь конкретным! Упоминай технологии, цифры]
         
-        📝 [Суть новости: 3-4 предложения. Будь конкретным!]
+        💡 [Практическое значение: 1-2 предложения]
         
-        💡 [Значение для отрасли: 1-2 предложения]
+        🔗 [Ссылка на официальный источник]
         
-        🔗 [Ссылка на источник]
+        🔖 [3-5 релевантных хештегов]
         
-        🔖 [3-5 хештегов]
-        
-        Будь кратким и информативным!
+        НИЧЕГО не пиши перед заголовком и после хештегов!
         """
         
         return await self.yandex_gpt_call(prompt)
@@ -148,10 +141,10 @@ async def send_to_telegram_async(message, session):
             "chat_id": TELEGRAM_CHANNEL_ID,
             "text": message,
             "parse_mode": "HTML",
-            "disable_web_page_preview": False
+            "disable_web_page_preview": True  # Отключаем превью ссылок
         }
         
-        async with session.post(url, json=payload) as response:
+        async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as response:
             if response.status == 200:
                 logger.info("✅ Сообщение отправлено в Telegram!")
                 return True
@@ -165,52 +158,74 @@ async def send_to_telegram_async(message, session):
 
 async def publish_hourly_news(hour):
     """Публикация новости для конкретного часа"""
-    logger.info(f"📅 Запуск публикации для {hour:02d}:00...")
+    logger.info(f"📅 Публикация для {hour:02d}:00 МСК")
+    start_time = time.time()
     
-    async with AsyncYandexGPTMonitor() as monitor:
-        async with aiohttp.ClientSession() as telegram_session:
-            # Получаем новость
-            news_content = await monitor.search_ai_news(hour)
-            
-            if news_content:
-                # Форматируем сообщение
-                telegram_message = f"""
-🤖 <b>СВЕЖАЯ НОВОСТЬ ИИ</b> • {hour:02d}:00 МСК
-
-{news_content}
-
-<em>💎 Асинхронный режим • YandexGPT 5.1 Pro</em>
-<em>💳 Токены использовано: ~{monitor.token_usage}</em>
-                """
+    try:
+        async with AsyncYandexGPTMonitor() as monitor:
+            async with aiohttp.ClientSession() as telegram_session:
+                news_content = await monitor.search_ai_news(hour)
                 
-                if await send_to_telegram_async(telegram_message, telegram_session):
-                    logger.info(f"🎉 Новость для {hour:02d}:00 опубликована!")
+                if news_content:
+                    # Очищаем текст - оставляем только от 🚀 до 🔖
+                    lines = news_content.split('\n')
+                    cleaned_content = []
+                    start_adding = False
+                    stop_adding = False
                     
-                    # Сохраняем лог
-                    log_entry = f"{datetime.now()}: {hour:02d}:00 - Успех (~{monitor.token_usage} токенов)\n"
-                    with open("news_log.txt", "a", encoding="utf-8") as f:
-                        f.write(log_entry)
+                    for line in lines:
+                        line = line.strip()
+                        if not line:
+                            continue
+                            
+                        if line.startswith('🚀'):
+                            start_adding = True
+                        
+                        if start_adding and not stop_adding:
+                            cleaned_content.append(line)
+                            if line.startswith('🔖') or line.startswith('#'):
+                                stop_adding = True
+                    
+                    telegram_message = '\n'.join(cleaned_content)
+                    
+                    if await send_to_telegram_async(telegram_message, telegram_session):
+                        execution_time = time.time() - start_time
+                        logger.info(f"🎉 Новость опубликована за {execution_time:.1f} сек")
+                        
+                        # Логируем успех
+                        log_entry = f"{datetime.now()}: {hour:02d}:00 - {execution_time:.1f}сек, ~{monitor.token_usage}токенов\n"
+                        try:
+                            with open("news_log.txt", "a", encoding="utf-8") as f:
+                                f.write(log_entry)
+                        except:
+                            pass  # Игнорируем ошибки записи лога
+                    else:
+                        logger.error("❌ Ошибка публикации в Telegram")
                 else:
-                    logger.error(f"❌ Ошибка публикации для {hour:02d}:00")
-            else:
-                logger.error(f"❌ Не удалось получить новость для {hour:02d}:00")
+                    logger.error("❌ Не удалось получить новость от YandexGPT")
+                    
+    except Exception as e:
+        logger.error(f"❌ Критическая ошибка: {e}")
 
 async def main():
-    """Основная асинхронная функция"""
-    logger.info("🚀 Запуск асинхронного AI News Monitor")
-    logger.info("⏰ Расписание: 6:00-18:00 МСК (12 публикаций в день)")
-    logger.info(f"💳 Баланс: 3,980 руб • Расчетный срок: 4-5 месяцев")
-    
-    # Определяем текущий час по МСК
-    from datetime import timezone
+    """Основная функция"""
+    # Текущее время по МСК
     msk_time = datetime.now(timezone(timedelta(hours=3)))
     current_hour = msk_time.hour
+    current_minute = msk_time.minute
     
-    # Публикуем только в рабочие часы 6-18
-    if 6 <= current_hour <= 18:
-        await publish_hourly_news(current_hour)
-    else:
-        logger.info(f"⏸️ Вне рабочего времени ({current_hour:02d}:00). Ожидаем 6:00 МСК")
+    logger.info("=" * 50)
+    logger.info("🚀 AI News Monitor - Круглосуточный режим")
+    logger.info(f"⏰ Текущее время: {msk_time.strftime('%H:%M')} МСК")
+    logger.info(f"💳 Баланс: 3,980 руб • Стоимость: ~864 руб/мес")
+    logger.info(f"📊 GitHub Actions: 2000 мин/мес • Использование: ~720 мин/мес")
+    logger.info("=" * 50)
+    
+    # Публикуем новость каждый час (круглосуточно)
+    logger.info(f"✅ Публикуем новость для {current_hour:02d}:00")
+    await publish_hourly_news(current_hour)
+    
+    logger.info(f"⏳ Следующая публикация в {(current_hour + 1) % 24:02d}:00")
 
 if __name__ == "__main__":
     # Проверка переменных
@@ -226,5 +241,5 @@ if __name__ == "__main__":
         logger.error(f"❌ Отсутствуют переменные: {', '.join(missing_vars)}")
         exit(1)
     
-    # Запуск асинхронного приложения
+    # Запуск
     asyncio.run(main())
