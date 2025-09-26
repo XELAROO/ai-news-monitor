@@ -40,7 +40,7 @@ def send_to_telegram(message):
         return False
 
 def deepseek_api_call(prompt):
-    """Вызов DeepSeek API"""
+    """Вызов DeepSeek API с детальным логированием"""
     try:
         url = "https://api.deepseek.com/v1/chat/completions"
         headers = {
@@ -51,27 +51,42 @@ def deepseek_api_call(prompt):
         data = {
             "model": "deepseek-chat",
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 2000,
+            "max_tokens": 1000,
             "temperature": 0.7
         }
         
         print("🔍 Отправляем запрос к DeepSeek API...")
-        response = requests.post(url, headers=headers, json=data)
+        print(f"URL: {url}")
+        print(f"Заголовки: Authorization: Bearer ***{DEEPSEEK_API_KEY[-10:] if DEEPSEEK_API_KEY else 'NO_KEY'}")  # Показываем только последние 10 символов
+        print(f"Длина промпта: {len(prompt)} символов")
+        
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        
+        print(f"📡 Статус ответа: {response.status_code}")
+        print(f"📨 Заголовки ответа: {dict(response.headers)}")
         
         if response.status_code == 200:
             result = response.json()
+            print("✅ Формат ответа корректный")
             if 'choices' in result and len(result['choices']) > 0:
                 content = result['choices'][0]['message']['content']
-                print("✅ DeepSeek ответил успешно!")
+                print(f"📝 Длина ответа: {len(content)} символов")
                 return content
             else:
                 print("❌ Неверный формат ответа от DeepSeek")
+                print(f"Полный ответ: {result}")
                 return None
         else:
-            print(f"❌ Ошибка DeepSeek API: {response.status_code}")
-            print(f"Ответ сервера: {response.text}")
+            print(f"❌ Ошибка HTTP: {response.status_code}")
+            print(f"Текст ошибки: {response.text}")
             return None
             
+    except requests.exceptions.Timeout:
+        print("❌ Таймаут запроса к DeepSeek API (30 секунд)")
+        return None
+    except requests.exceptions.ConnectionError:
+        print("❌ Ошибка подключения к DeepSeek API")
+        return None
     except Exception as e:
         print(f"❌ Исключение при вызове DeepSeek API: {e}")
         return None
