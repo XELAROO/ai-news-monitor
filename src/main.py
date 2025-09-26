@@ -1,22 +1,116 @@
 import os
 import requests
-import sys
+import json
+import time
+from datetime import datetime, timedelta
+import schedule
+import threading
 
-print("=" * 50)
-print("🚀 AI News Monitor - ПОЛНАЯ ВЕРСИЯ")
-print("=" * 50)
+print("=" * 60)
+print("🚀 AI News Monitor с YandexGPT 5.1 Pro")
+print("=" * 60)
 
-# Получаем ключи из переменных окружения
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN') 
+# Конфигурация
+YANDEX_API_KEY = os.getenv('YANDEX_API_KEY')
+YANDEX_FOLDER_ID = os.getenv('YANDEX_FOLDER_ID')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHANNEL_ID = os.getenv('TELEGRAM_CHANNEL_ID')
 
-# Выводим отладочную информацию
-print("🔧 Проверка переменных окружения:")
-print(f"DEEPSEEK_API_KEY: {'***установлен***' if DEEPSEEK_API_KEY else '❌ НЕ УСТАНОВЛЕН'}")
-print(f"TELEGRAM_BOT_TOKEN: {'***установлен***' if TELEGRAM_BOT_TOKEN else '❌ НЕ УСТАНОВЛЕН'}")
-print(f"TELEGRAM_CHANNEL_ID: {'***установлен***' if TELEGRAM_CHANNEL_ID else '❌ НЕ УСТАНОВЛЕН'}")
-print("-" * 50)
+# Проверка конфигурации
+print("🔧 Проверка конфигурации:")
+print(f"YANDEX_API_KEY: {'***установлен***' if YANDEX_API_KEY else '❌ НЕТ'}")
+print(f"YANDEX_FOLDER_ID: {'***установлен***' if YANDEX_FOLDER_ID else '❌ НЕТ'}")
+print(f"TELEGRAM_BOT_TOKEN: {'***установлен***' if TELEGRAM_BOT_TOKEN else '❌ НЕТ'}")
+print(f"TELEGRAM_CHANNEL_ID: {'***установлен***' if TELEGRAM_CHANNEL_ID else '❌ НЕТ'}")
+print("-" * 60)
+
+class YandexGPTMonitor:
+    def __init__(self):
+        self.api_url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+        self.headers = {
+            "Authorization": f"Api-Key {YANDEX_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+    def yandex_gpt_call(self, prompt, max_tokens=2000):
+        """Вызов YandexGPT API"""
+        try:
+            data = {
+                "modelUri": f"gpt://{YANDEX_FOLDER_ID}/yandexgpt-lite",
+                "completionOptions": {
+                    "stream": False,
+                    "temperature": 0.7,
+                    "maxTokens": max_tokens
+                },
+                "messages": [
+                    {
+                        "role": "system",
+                        "text": "Ты - профессиональный редактор новостного канала об искусственном интеллекте. Создавай краткие, информативные и engaging новости на русском языке."
+                    },
+                    {
+                        "role": "user",
+                        "text": prompt
+                    }
+                ]
+            }
+            
+            print(f"🔍 Отправляем запрос к YandexGPT ({len(prompt)} символов)...")
+            response = requests.post(self.api_url, headers=self.headers, json=data, timeout=60)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if 'result' in result and 'alternatives' in result['result']:
+                    content = result['result']['alternatives'][0]['message']['text']
+                    print(f"✅ Ответ получен ({len(content)} символов)")
+                    return content
+                else:
+                    print(f"❌ Неверный формат ответа: {result}")
+                    return None
+            else:
+                print(f"❌ Ошибка API: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            print(f"❌ Ошибка вызова YandexGPT: {e}")
+            return None
+
+    def search_ai_news(self):
+        """Поиск и обработка новостей об ИИ"""
+        prompt = """
+        Найди САМУЮ интересную и важную новость за последние 2-3 часа в сфере искусственного интеллекта.
+        
+        Критерии отбора:
+        - Новости от ведущих компаний: Google, Microsoft, OpenAI, Meta, Yandex, Apple, Amazon
+        - Прорывные исследования или крупные обновления
+        - Практическая значимость для отрасли
+        
+        Формат ответа для Telegram:
+        
+        🚀 [Эмоциональный заголовок на русском с эмодзи]
+        
+        📝 [Суть новости: 3-4 предложения на русском. Будь конкретным - упоминай цифры, технологии, последствия]
+        
+        💡 [Почему это важно: 1-2 предложения о значении для отрасли]
+        
+        🔗 [Ссылка на официальный источник или авторитетное издание]
+        
+        🔖 [3-5 релевантных хештегов на русском и английском]
+        
+        Пример:
+        🚀 Google представила Gemini Ultra 2.0!
+        
+        📝 Новая модель демонстрирует 95% точность в тестах, превосходя GPT-4. 
+        Поддерживает 50 языков и работает в 2 раза быстрее предыдущей версии.
+        Доступна для разработчиков с сегодняшнего дня.
+        
+        💡 Это может изменить ландшафт AI-индустрии и ускорить внедрение ИИ в бизнесе.
+        
+        🔗 https://blog.google/technology/ai/gemini-ultra-2
+        
+        🔖 #Google #Gemini #ИИ #AI #Прорыв
+        """
+        
+        return self.yandex_gpt_call(prompt)
 
 def send_to_telegram(message):
     """Отправка сообщения в Telegram"""
@@ -25,7 +119,8 @@ def send_to_telegram(message):
         payload = {
             "chat_id": TELEGRAM_CHANNEL_ID,
             "text": message,
-            "parse_mode": "HTML"
+            "parse_mode": "HTML",
+            "disable_web_page_preview": False
         }
         
         response = requests.post(url, json=payload)
@@ -33,179 +128,113 @@ def send_to_telegram(message):
             print("✅ Сообщение отправлено в Telegram!")
             return True
         else:
-            print(f"❌ Ошибка Telegram API: {response.status_code}")
+            print(f"❌ Ошибка Telegram: {response.status_code}")
             return False
     except Exception as e:
         print(f"❌ Ошибка отправки в Telegram: {e}")
         return False
 
-def deepseek_api_call(prompt):
-    """Вызов DeepSeek API с детальным логированием"""
-    try:
-        url = "https://api.deepseek.com/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json"
-        }
+def publish_daily_news():
+    """Публикация одной новости"""
+    print(f"\n📅 Запуск публикации в {datetime.now().strftime('%H:%M')}...")
+    
+    monitor = YandexGPTMonitor()
+    
+    # Получаем новость от YandexGPT
+    news_content = monitor.search_ai_news()
+    
+    if news_content:
+        # Форматируем для Telegram
+        telegram_message = f"""
+🤖 <b>СВЕЖАЯ НОВОСТЬ ИИ</b> • {datetime.now().strftime('%H:%M')}
+
+{news_content}
+
+<em>📊 Автоматический мониторинг: YandexGPT 5.1 Pro</em>
+        """
         
-        data = {
-            "model": "deepseek-chat",
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 1000,
-            "temperature": 0.7
-        }
-        
-        print("🔍 Отправляем запрос к DeepSeek API...")
-        print(f"URL: {url}")
-        print(f"Заголовки: Authorization: Bearer ***{DEEPSEEK_API_KEY[-10:] if DEEPSEEK_API_KEY else 'NO_KEY'}")  # Показываем только последние 10 символов
-        print(f"Длина промпта: {len(prompt)} символов")
-        
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        
-        print(f"📡 Статус ответа: {response.status_code}")
-        print(f"📨 Заголовки ответа: {dict(response.headers)}")
-        
-        if response.status_code == 200:
-            result = response.json()
-            print("✅ Формат ответа корректный")
-            if 'choices' in result and len(result['choices']) > 0:
-                content = result['choices'][0]['message']['content']
-                print(f"📝 Длина ответа: {len(content)} символов")
-                return content
-            else:
-                print("❌ Неверный формат ответа от DeepSeek")
-                print(f"Полный ответ: {result}")
-                return None
-        else:
-            print(f"❌ Ошибка HTTP: {response.status_code}")
-            print(f"Текст ошибки: {response.text}")
-            return None
+        if send_to_telegram(telegram_message):
+            print("🎉 Новость успешно опубликована!")
             
-    except requests.exceptions.Timeout:
-        print("❌ Таймаут запроса к DeepSeek API (30 секунд)")
-        return None
-    except requests.exceptions.ConnectionError:
-        print("❌ Ошибка подключения к DeepSeek API")
-        return None
-    except Exception as e:
-        print(f"❌ Исключение при вызове DeepSeek API: {e}")
-        return None
-
-def monitor_news():
-    """Тестовая функция для проверки DeepSeek API"""
-    print("🧪 Тестируем DeepSeek API...")
-    
-    # Очень простой промпт для теста
-    test_prompt = "Ответь одним словом: 'Работает'"
-    
-    response = deepseek_api_call(test_prompt)
-    
-    if response:
-        print(f"🎉 DeepSeek API работает! Ответ: {response}")
-        
-        # Отправляем успешное сообщение в Telegram
-        success_message = """
-🤖 <b>AI News Monitor - DeepSeek API РАБОТАЕТ!</b>
-
-✅ <b>Поздравляем! Все системы запущены:</b>
-• Telegram: ✅ РАБОТАЕТ
-• DeepSeek: ✅ РАБОТАЕТ
-• GitHub Actions: ✅ РАБОТАЕТ
-
-🎯 <b>Система готова к автоматическому мониторингу!</b>
-
-⏰ <b>Завтра в 09:00 получите первые новости</b>
-
-🔖 #AI #Готово #Запуск #Работает
-        """
-        
-        if send_to_telegram(success_message):
-            print("✅ Уведомление об успехе отправлено!")
+            # Логируем успех
+            log_entry = f"{datetime.now()}: Успешная публикация\n"
+            with open("news_log.txt", "a", encoding="utf-8") as f:
+                f.write(log_entry)
+        else:
+            print("❌ Ошибка публикации в Telegram")
     else:
-        print("❌ DeepSeek API не отвечает")
+        print("❌ Не удалось получить новость от YandexGPT")
         
-        # Детальное сообщение об ошибке в Telegram
-        error_details = """
-🤖 <b>AI News Monitor - Диагностика DeepSeek</b>
+        # Резервное сообщение
+        backup_message = """
+🤖 <b>AI NEWS MONITOR</b> • {datetime.now().strftime('%H:%M')}
 
-❌ <b>Проблема с DeepSeek API</b>
+⚠️ <b>Временные технические трудности</b>
 
-🔧 <b>Возможные причины:</b>
-1. Неверный API ключ
-2. Ключ заблокирован или истек
-3. Проблемы на стороне DeepSeek
-4. Ошибка сети
+📡 Не удалось получить свежие новости от системы мониторинга. 
+Попробуем снова через час!
 
-💡 <b>Решение:</b>
-1. Проверьте ключ на platform.deepseek.com
-2. Создайте новый API ключ
-3. Обновите секрет в настройках GitHub
+💡 <i>Система использует YandexGPT 5.1 Pro для поиска и анализа новостей</i>
 
-🔖 #AI #Ошибка #Диагностика
+🔖 #ИИ #Новости #Техработы
         """
-        
-        send_to_telegram(error_details)
+        send_to_telegram(backup_message)
 
-def publish_news():
-    """Функция публикации тестового сообщения"""
-    print("📤 Отправляем тестовое сообщение...")
+def schedule_news():
+    """Расписание публикаций (каждый час с 09:00 до 21:00 по МСК)"""
+    publication_times = [
+        "09:00", "10:00", "11:00", "12:00", "13:00", "14:00",
+        "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"
+    ]
     
-    test_message = """
-🤖 <b>AI News Monitor - Тест системы</b>
+    for time_str in publication_times:
+        schedule.every().day.at(time_str).do(publish_daily_news)
+        print(f"⏰ Запланирована публикация на {time_str}")
 
-✅ <b>Все компоненты проверены:</b>
-• Telegram: ✅ РАБОТАЕТ
-• GitHub Actions: ✅ РАБОТАЕТ
-• DeepSeek: 🔄 ПРОВЕРКА
+def run_scheduler():
+    """Запуск планировщика"""
+    while True:
+        schedule.run_pending()
+        time.sleep(60)  # Проверка каждую минуту
 
-🎯 <b>Система готова к автоматической работе!</b>
-
-⏰ <b>Расписание:</b>
-Ежедневно в 09:00, 12:00, 15:00, 18:00, 21:00 по МСК
-
-🔖 #AI #Тест #Готово #Автоматизация
-    """
-    
-    if send_to_telegram(test_message):
-        print("✅ Тестовое сообщение отправлено!")
-    else:
-        print("❌ Не удалось отправить тестовое сообщение")
-
-# Главная функция
 if __name__ == "__main__":
-    # Проверяем обязательные переменные
-    if not TELEGRAM_BOT_TOKEN:
-        print("❌ ОШИБКА: TELEGRAM_BOT_TOKEN не найден")
-        sys.exit(1)
-        
-    if not TELEGRAM_CHANNEL_ID:
-        print("❌ ОШИБКА: TELEGRAM_CHANNEL_ID не найден")
-        sys.exit(1)
-
-    if not DEEPSEEK_API_KEY:
-        print("❌ ОШИБКА: DEEPSEEK_API_KEY не найден")
-        print("💡 Решение: Добавьте корректный API ключ в Secrets")
-        # Но продолжаем работу в тестовом режиме
-        test_message = """
-🤖 <b>AI News Monitor - Требуется настройка</b>
-
-❌ <b>Проблема:</b> Не настроен DEEPSEEK_API_KEY
-
-💡 <b>Решение:</b>
-1. Зайдите в Settings → Secrets → Actions
-2. Добавьте DEEPSEEK_API_KEY с вашим ключом от platform.deepseek.com
-
-🔖 #AI #Настройка #Помощь
-        """
-        send_to_telegram(test_message)
-        sys.exit(1)
-
-    # Определяем действие
-    if len(sys.argv) > 1 and sys.argv[1] == "publish":
-        publish_news()
-    else:
-        monitor_news()
+    # Проверка обязательных переменных
+    required_vars = {
+        'YANDEX_API_KEY': YANDEX_API_KEY,
+        'YANDEX_FOLDER_ID': YANDEX_FOLDER_ID, 
+        'TELEGRAM_BOT_TOKEN': TELEGRAM_BOT_TOKEN,
+        'TELEGRAM_CHANNEL_ID': TELEGRAM_CHANNEL_ID
+    }
     
-    print("=" * 50)
-    print("🏁 Работа завершена!")
-    print("=" * 50)
+    missing_vars = [name for name, value in required_vars.items() if not value]
+    if missing_vars:
+        print(f"❌ Отсутствуют переменные: {', '.join(missing_vars)}")
+        exit(1)
+    
+    print("✅ Все переменные окружения установлены")
+    print("⏰ Настраиваем расписание публикаций...")
+    
+    # Настраиваем расписание
+    schedule_news()
+    
+    # Тестовая публикация при запуске
+    print("\n🧪 Тестовая публикация...")
+    publish_daily_news()
+    
+    print("\n🎯 Система запущена! Расписание:")
+    print("• 09:00 - 21:00: публикация каждый час")
+    print("• Всего 13 публикаций в день")
+    print("• Мониторинг через YandexGPT 5.1 Pro")
+    print("\n🔄 Ожидаем следующей публикации...")
+    
+    # Запускаем планировщик в отдельном потоке
+    scheduler_thread = threading.Thread(target=run_scheduler)
+    scheduler_thread.daemon = True
+    scheduler_thread.start()
+    
+    # Бесконечный цикл основного потока
+    try:
+        while True:
+            time.sleep(3600)  # Спим 1 час
+    except KeyboardInterrupt:
+        print("\n🛑 Система остановлена")
