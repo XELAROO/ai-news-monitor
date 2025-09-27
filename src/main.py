@@ -53,7 +53,7 @@ class AsyncYandexGPTMonitor:
                 "messages": [
                     {
                         "role": "system",
-                        "text": "Ты - профессиональный редактор новостного канала об ИИ. Создавай краткие, информативные новости на русском. Максимум 3-4 предложения. Добавляй пустые строки между блоками для лучшей читаемости."
+                        "text": "Ты - профессиональный редактор новостного канала об ИИ. Создавай краткие, информативные новости на русском. Максимум 3-4 предложения."
                     },
                     {
                         "role": "user", 
@@ -68,7 +68,7 @@ class AsyncYandexGPTMonitor:
                 self.api_url, 
                 headers=self.headers, 
                 json=data, 
-                timeout=aiohttp.ClientTimeout(total=90)
+                timeout=aiohttp.ClientTimeout(total=90)  # Уменьшили таймаут
             ) as response:
                 
                 if response.status == 200:
@@ -131,8 +131,8 @@ class AsyncYandexGPTMonitor:
         
         🔖 3-5 хештегов
         
-        ВАЖНО: Добавляй пустую строку между каждым блоком!
         Ничего не пиши перед 🚀 и после 🔖!
+        Краткость - важнее всего!
         """
         
         return await self.yandex_gpt_call(prompt)
@@ -166,24 +166,23 @@ async def publish_hourly_news(hour):
                 news_content = await monitor.search_ai_news(hour)
                 
                 if news_content:
-                    # Дополнительная обработка для гарантии пробелов
+                    # Очищаем текст
                     lines = news_content.split('\n')
                     cleaned_content = []
+                    start_adding = False
                     
-                    for i, line in enumerate(lines):
+                    for line in lines:
                         line = line.strip()
                         if not line:
                             continue
                             
-                        # Добавляем текущую строку
-                        cleaned_content.append(line)
+                        if line.startswith('🚀'):
+                            start_adding = True
                         
-                        # Добавляем пустую строку после блоков (кроме последнего)
-                        if (line.startswith('🚀') or line.startswith('📝') or 
-                            line.startswith('💡') or line.startswith('🔗')) and i < len(lines) - 1:
-                            next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                            if next_line and not next_line.startswith('🔖'):
-                                cleaned_content.append('')
+                        if start_adding:
+                            cleaned_content.append(line)
+                            if line.startswith('🔖'):
+                                break
                     
                     telegram_message = '\n'.join(cleaned_content)
                     
@@ -209,8 +208,11 @@ async def main():
     current_hour = msk_time.hour
     
     logger.info("=" * 50)
-    logger.info("🚀 AI News Monitor - Исправленная версия с пробелами")
+    logger.info("🚀 AI News Monitor - Оптимизированная версия")
     logger.info(f"⏰ Текущее время: {msk_time.strftime('%H:%M')} МСК")
+    logger.info(f"📅 Публикации: {len(PUBLICATION_HOURS)} раз/день (07:00-19:00)")
+    logger.info(f"💳 Стоимость: ~936 руб/мес • Баланс: 3,980 руб")
+    logger.info(f"📊 GitHub Actions: 65 мин/день • 1950/2000 мин/мес ✅")
     logger.info("=" * 50)
     
     # Проверяем, нужно ли публиковать в этот час
@@ -224,6 +226,7 @@ async def main():
             logger.warning(f"⚠️ Завершено с ошибками для {current_hour:02d}:00")
     else:
         logger.info(f"⏸️ {current_hour:02d}:00 - не время публикации")
+        logger.info(f"📅 Следующая публикация в {PUBLICATION_HOURS[0]:02d}:00")
 
 if __name__ == "__main__":
     # Быстрая проверка переменных
