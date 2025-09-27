@@ -167,6 +167,7 @@ class AsyncYandexGPTMonitor:
         КРИТЕРИИ ДОСТОВЕРНОСТИ (ОБЯЗАТЕЛЬНО):
         
         ✅ **ВЫСОКИЙ ПРИОРИТЕТ - официальные источники:**
+        - Каналы компаний в X: (Google: https://x.com/Google, Microsoft: https://x.com/Microsoft, OpenAI: https://x.com/OpenAI, Meta: https://x.com/Meta, xAI: https://x.com/xAI, Anthropic: https://x.com/AnthropicAI, Apple: https://x.com/Apple, Amazon: https://x.com/Amazon, NVIDIA: https://x.com/NVIDIA, Tesla: https://x.com/Tesla, DeepSeek: https://x.com/DeepSeekAI, Yandex: https://x.com/Yandex, Midjourney: https://x.com/Midjourney, Stability AI: https://x.com/StabilityAI, Hugging Face: https://x.com/HuggingFace)
         - Блоги компаний: blog.google, blogs.microsoft.com, openai.com/blog, ai.meta.com
         - Авторитетные издания: TechCrunch, The Verge, Reuters, Bloomberg
         - Научные публикации: arXiv, Nature, Science
@@ -182,7 +183,7 @@ class AsyncYandexGPTMonitor:
         - Новости без конкретных деталей и цифр
         
         Критерии отбора по компаниям (приоритет):
-        1. Google, Microsoft, OpenAI, Meta, xAI, Anthropic
+        1. OpenAI, Google, Microsoft, Meta, xAI, Anthropic
         2. Apple, Amazon, NVIDIA, Tesla, DeepSeek
         3. Yandex, Midjourney, Stability AI, Hugging Face
         
