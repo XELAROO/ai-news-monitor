@@ -2,13 +2,13 @@ name: YandexGPT Async AI News Monitor
 
 on:
   schedule:
-    # Каждый час с 3:00 до 15:00 UTC (6:00-18:00 МСК)
-    - cron: '0 3-15 * * *'
+    - cron: '0 3-15 * * *'  # 06:00-18:00 МСК
   workflow_dispatch:
 
 jobs:
   publish-hourly-news:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     
     steps:
       - name: Checkout code
@@ -19,10 +19,19 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install async dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install aiohttp
+          pip install -r requirements.txt
+
+      - name: Debug info
+        run: |
+          echo "📁 Содержимое папки:"
+          ls -la
+          echo "📁 Содержимое src:"
+          ls -la src/
+          echo "📄 Requirements:"
+          cat requirements.txt
 
       - name: Publish hourly AI News
         env:
@@ -31,4 +40,6 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
         run: |
+          echo "🚀 Запуск в: $(date -u) UTC"
+          echo "🕐 МСК время: $(date -d '+3 hours')"
           python src/main.py
