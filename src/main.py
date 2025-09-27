@@ -6,6 +6,7 @@ import re
 from datetime import datetime, timedelta, timezone
 import logging
 import time
+from typing import List, Dict
 
 # Настройка логирования
 logging.basicConfig(
@@ -20,8 +21,159 @@ YANDEX_FOLDER_ID = os.getenv('YANDEX_FOLDER_ID')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHANNEL_ID = os.getenv('TELEGRAM_CHANNEL_ID')
 
-# Расписание публикаций (13 раз в день с 07:00 до 19:00 МСК)
-PUBLICATION_HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+# Круглосуточный режим - публикация каждый час
+PUBLICATION_HOURS = list(range(24))  # 0-23 часа
+
+class CompanyRotationManager:
+    """Менеджер ротации компаний для круглосуточного режима"""
+    
+    def __init__(self):
+        # Группировка компаний по уровню активности и времени суток
+        self.companies_night = [  # 00-06 МСК - международные компании (активны в США)
+            "OpenAI", "Anthropic", "Google", "Microsoft", "xAI", "Meta",
+            "Apple", "Amazon", "NVIDIA", "Tesla"
+        ]
+        
+        self.companies_morning = [  # 07-11 МСК - все компании
+            "OpenAI", "Google", "Microsoft", "Meta", "xAI", "Anthropic",
+            "Apple", "Amazon", "NVIDIA", "Tesla", "DeepSeek",
+            "Yandex", "Midjourney", "Stability AI", "Hugging Face"
+        ]
+        
+        self.companies_day = [  # 12-17 МСК - все компании
+            "OpenAI", "Google", "Microsoft", "Meta", "xAI", "Anthropic", 
+            "Apple", "Amazon", "NVIDIA", "Tesla", "DeepSeek",
+            "Yandex", "Midjourney", "Stability AI", "Hugging Face"
+        ]
+        
+        self.companies_evening = [  # 18-23 МСК - международные + российские
+            "OpenAI", "Google", "Microsoft", "Meta", "xAI", "Anthropic",
+            "Apple", "Amazon", "NVIDIA", "Tesla", "DeepSeek", "Yandex"
+        ]
+        
+        self.all_companies = list(set(
+            self.companies_night + self.companies_morning + 
+            self.companies_day + self.companies_evening
+        ))
+        
+        self.current_index = 0
+        self.last_rotation_date = None
+        
+    def get_company_for_hour(self, hour: int) -> str:
+        """Выбор компании для текущего часа с учетом времени суток"""
+        today = datetime.now().date()
+        
+        # Сбрасываем индекс если сменился день
+        if self.last_rotation_date != today:
+            self.current_index = 0
+            self.last_rotation_date = today
+        
+        # Выбор пула компаний в зависимости от времени суток
+        if 0 <= hour <= 6:    # Ночь (00-06 МСК)
+            companies_pool = self.companies_night
+            time_slot = "ночь"
+        elif 7 <= hour <= 11: # Утро (07-11 МСК)  
+            companies_pool = self.companies_morning
+            time_slot = "утро"
+        elif 12 <= hour <= 17: # День (12-17 МСК)
+            companies_pool = self.companies_day
+            time_slot = "день"
+        else:                 # Вечер (18-23 МСК)
+            companies_pool = self.companies_evening
+            time_slot = "вечер"
+        
+        # Циклическая ротация внутри выбранного пула
+        company = companies_pool[self.current_index % len(companies_pool)]
+        self.current_index += 1
+        
+        logger.info(f"🏢 Ротация: {hour:02d}:00 МСК ({time_slot}) -> {company}")
+        return company
+    
+    def get_company_sources(self, company: str) -> Dict[str, str]:
+        """Получение источников для конкретной компании"""
+        sources_map = {
+            "OpenAI": {
+                "x": "https://x.com/OpenAI",
+                "blog": "openai.com/blog",
+                "official": "OpenAI официальный канал"
+            },
+            "Google": {
+                "x": "https://x.com/Google", 
+                "blog": "blog.google",
+                "official": "Google AI блог"
+            },
+            "Microsoft": {
+                "x": "https://x.com/Microsoft",
+                "blog": "blogs.microsoft.com/ai",
+                "official": "Microsoft AI блог"
+            },
+            "Meta": {
+                "x": "https://x.com/Meta",
+                "blog": "ai.meta.com",
+                "official": "Meta AI блог"
+            },
+            "xAI": {
+                "x": "https://x.com/xAI",
+                "blog": "x.ai/blog",
+                "official": "xAI официальный канал"
+            },
+            "Anthropic": {
+                "x": "https://x.com/AnthropicAI", 
+                "blog": "anthropic.com/news",
+                "official": "Anthropic блог"
+            },
+            "Apple": {
+                "x": "https://x.com/Apple",
+                "blog": "developer.apple.com/machine-learning",
+                "official": "Apple Machine Learning"
+            },
+            "Amazon": {
+                "x": "https://x.com/Amazon",
+                "blog": "aws.amazon.com/blogs/machine-learning",
+                "official": "AWS AI блог"
+            },
+            "NVIDIA": {
+                "x": "https://x.com/NVIDIA", 
+                "blog": "blogs.nvidia.com",
+                "official": "NVIDIA AI блог"
+            },
+            "Tesla": {
+                "x": "https://x.com/Tesla",
+                "blog": "tesla.com/AI",
+                "official": "Tesla AI"
+            },
+            "DeepSeek": {
+                "x": "https://x.com/DeepSeekAI",
+                "blog": "deepseek.com",
+                "official": "DeepSeek официальный"
+            },
+            "Yandex": {
+                "x": "https://x.com/Yandex",
+                "blog": "yandex.ru/blog/company/ai",
+                "official": "Yandex AI блог"
+            },
+            "Midjourney": {
+                "x": "https://x.com/Midjourney",
+                "blog": "midjourney.com/news",
+                "official": "Midjourney официальный"
+            },
+            "Stability AI": {
+                "x": "https://x.com/StabilityAI", 
+                "blog": "stability.ai/news",
+                "official": "Stability AI блог"
+            },
+            "Hugging Face": {
+                "x": "https://x.com/HuggingFace",
+                "blog": "huggingface.co/blog",
+                "official": "Hugging Face блог"
+            }
+        }
+        
+        return sources_map.get(company, {
+            "x": f"https://x.com/search?q={company} AI",
+            "blog": f"Поиск новостей {company}",
+            "official": f"{company} официальные источники"
+        })
 
 class AsyncYandexGPTMonitor:
     def __init__(self):
@@ -32,28 +184,18 @@ class AsyncYandexGPTMonitor:
         }
         self.session = None
         self.token_usage = 0
+        self.company_manager = CompanyRotationManager()
         
         # Доверенные домены для проверки достоверности
         self.trusted_domains = [
-            # Официальные блоги компаний
             'blog.google', 'blogs.microsoft.com', 'openai.com/blog', 
             'ai.meta.com', 'x.ai', 'anthropic.com', 'developer.apple.com',
             'aws.amazon.com', 'blogs.nvidia.com', 'tesla.com',
-            'yandex.ru/blog', 'deepseek.com',
-            
-            # Авторитетные издания
+            'yandex.ru/blog', 'deepseek.com', 'midjourney.com',
+            'stability.ai', 'huggingface.co',
             'techcrunch.com', 'theverge.com', 'wired.com', 'arstechnica.com',
             'reuters.com', 'bloomberg.com', 'cnbc.com', 'venturebeat.com',
-            
-            # Научные источники
             'arxiv.org', 'nature.com', 'science.org'
-        ]
-        
-        # Индикаторы сомнительного контента
-        self.suspicious_indicators = [
-            'слухи', 'утечки', 'инсайдеры', 'неподтвержденно',
-            'возможно', 'вероятно', 'предположительно', 'сообщают',
-            'революция', 'прорыв века', 'изменит всё', 'кардинально'
         ]
 
     async def __aenter__(self):
@@ -63,27 +205,6 @@ class AsyncYandexGPTMonitor:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self.session:
             await self.session.close()
-
-    def validate_news_source(self, news_content):
-        """Проверка достоверности источника новости"""
-        if not news_content:
-            return "empty"
-            
-        # Проверка домена в ссылке
-        url_match = re.search(r'🔗\s*(http[^\s]+)', news_content)
-        if url_match:
-            url = url_match.group(1)
-            if any(domain in url for domain in self.trusted_domains):
-                return "trusted"
-            else:
-                return "unverified"
-        
-        # Проверка на спекулятивные формулировки
-        content_lower = news_content.lower()
-        if any(indicator in content_lower for indicator in self.suspicious_indicators):
-            return "suspicious"
-            
-        return "unknown"
 
     async def yandex_gpt_call(self, prompt, max_tokens=2000):
         """Асинхронный вызов YandexGPT API"""
@@ -126,7 +247,6 @@ class AsyncYandexGPTMonitor:
                     if 'result' in result and 'alternatives' in result['result']:
                         content = result['result']['alternatives'][0]['message']['text']
                         
-                        # Подсчет токенов
                         estimated_tokens = len(content) // 4 + len(prompt) // 4
                         self.token_usage += estimated_tokens
                         
@@ -149,71 +269,62 @@ class AsyncYandexGPTMonitor:
             logger.error(f"❌ Ошибка: {e}")
             return None
 
-    async def search_ai_news(self, hour):
-        """Поиск новостей с проверкой достоверности"""
+    async def search_ai_news(self, hour: int):
+        """Поиск новостей с ротацией компаний"""
+        target_company = self.company_manager.get_company_for_hour(hour)
+        company_sources = self.company_manager.get_company_sources(target_company)
+        
+        # Контекст времени суток для промпта
         time_contexts = {
-            7: "утренние", 8: "утренние", 9: "утренние",
-            10: "дневные", 11: "дневные", 12: "обеденные",
-            13: "дневные", 14: "дневные", 15: "дневные",
-            16: "вечерние", 17: "вечерние", 18: "вечерние", 19: "поздние вечерние"
+            **{h: "ночные" for h in range(0, 7)},
+            **{h: "утренние" for h in range(7, 12)},
+            **{h: "дневные" for h in range(12, 18)},
+            **{h: "вечерние" for h in range(18, 24)}
         }
         
         context = time_contexts.get(hour, "текущие")
         
         prompt = f"""
-        Найди САМУЮ интересную и ДОСТОВЕРНУЮ новость за последние 24 часа в сфере ИИ.
+        Найди САМУЮ интересную и ДОСТОВЕРНУЮ новость за последние 24 часа от компании {target_company}.
         Сейчас {hour:02d}:00 МСК ({context} часы).
         
-        КРИТЕРИИ ДОСТОВЕРНОСТИ (ОБЯЗАТЕЛЬНО):
+        КОНКРЕТНЫЕ ИСТОЧНИКИ ДЛЯ {target_company.upper()}:
+        - Официальный X (Twitter): {company_sources['x']}
+        - Официальный блог: {company_sources['blog']}
+        - Другие официальные каналы: {company_sources['official']}
         
-        ✅ **ВЫСОКИЙ ПРИОРИТЕТ - официальные источники:**
-        - Каналы компаний в X: (Google: https://x.com/Google, Microsoft: https://x.com/Microsoft, OpenAI: https://x.com/OpenAI, Meta: https://x.com/Meta, xAI: https://x.com/xAI, Anthropic: https://x.com/AnthropicAI, Apple: https://x.com/Apple, Amazon: https://x.com/Amazon, NVIDIA: https://x.com/NVIDIA, Tesla: https://x.com/Tesla, DeepSeek: https://x.com/DeepSeekAI, Yandex: https://x.com/Yandex, Midjourney: https://x.com/Midjourney, Stability AI: https://x.com/StabilityAI, Hugging Face: https://x.com/HuggingFace)
-        - Блоги компаний: blog.google, blogs.microsoft.com, openai.com/blog, ai.meta.com
-        - Авторитетные издания: TechCrunch, The Verge, Reuters, Bloomberg
-        - Научные публикации: arXiv, Nature, Science
+        УЧТИ ВРЕМЯ СУТОК:
+        - {hour:02d}:00 МСК соответствует разному времени в других часовых поясах
+        - Новости могут появляться из США, Европы или Азии
+        - Проверяй актуальность с учетом временных зон
         
-        ⚠️ **ПРОВЕРЯТЬ КРИТИЧЕСКИ:**
-        - Соцсети (кроме официальных аккаунтов)
-        - Малые блоги без репутации
-        - Новости без четких источников
+        КРИТЕРИИ ДОСТОВЕРНОСТИ:
+        ✅ **ВЫСОКИЙ ПРИОРИТЕТ:** Официальные анонсы, блог компании, пресс-релизы
+        ✅ **ДОПУСТИМО:** Авторитетные издания (если цитируют официальные источники)
+        ❌ **ИЗБЕГАТЬ:** Слухи, неподтвержденные утечки, соцсети (кроме официальных)
         
-        ❌ **ИЗБЕГАТЬ:**
-        - Слухи, утечки, неподтвержденная информация
-        - Преувеличенные заголовки ("революция", "прорыв века")
-        - Новости без конкретных деталей и цифр
-        
-        Критерии отбора по компаниям (приоритет):
-        1. OpenAI, Google, Microsoft, Meta, xAI, Anthropic
-        2. Apple, Amazon, NVIDIA, Tesla, DeepSeek
-        3. Yandex, Midjourney, Stability AI, Hugging Face
-        
-        ТРЕБОВАНИЯ К КАЧЕСТВУ НОВОСТИ:
-        - ✅ Конкретные факты: даты, версии продуктов, цифры, имена моделей
-        - ✅ Прямые ссылки на официальные источники
-        - ✅ Технические детали вместо общих фраз
-        - ✅ Практическая значимость для отрасли
-        
-        ЕСЛИ НЕТ ДОСТОВЕРНЫХ НОВОСТЕЙ - лучше верни сообщение о том, что значимых новостей нет.
+        ЕСЛИ НЕТ НОВОСТЕЙ ОТ {target_company.upper()}:
+        - Можно найти новость о значимом партнерстве с участием {target_company}
+        - Или важную новость от другой крупной ИИ-компании
+        - Но в приоритете именно {target_company}
         
         Формат ответа (соблюдай точно!):
         
-        🚀 [Заголовок с указанием компании и конкретных деталей]\n\n
+        🚀 {target_company}: [Конкретный заголовок с деталями]\n\n
         
-        📝 [3-4 предложения с КОНКРЕТНЫМИ фактами. Пример: "Google представила Gemini 2.0 с 512K контекстом, доступную с 15 января"]\n\n
+        📝 [3-4 предложения с КОНКРЕТНЫМИ фактами о {target_company}]\n\n
         
         💡 [Практическое значение: 1-2 предложения]\n\n
         
-        🔗 [Ссылка на ПРЯМОЙ ИСТОЧНИК]\n\n
+        🔗 [Ссылка на ПРЯМОЙ ИСТОЧНИК от {target_company}]\n\n
         
-        🔖 [3-5 релевантных хештегов, начиная с #]
+        🔖 #{target_company.replace(' ', '')} #ИИ #НовостиИИ [еще 1-2 релевантных хештега]
         
-        ВАЖНО: 
-        - Добавляй пустую строку между каждым блоком!
-        - Ничего не пиши перед 🚀 и после 🔖!
-        - Приоритет достоверности над сенсационностью!
+        ВАЖНО: Приоритет достоверности над сенсационностью!
         """
         
-        return await self.yandex_gpt_call(prompt)
+        news_content = await self.yandex_gpt_call(prompt)
+        return news_content, target_company
 
 async def send_to_telegram_async(message, session):
     """Асинхронная отправка в Telegram"""
@@ -234,40 +345,50 @@ async def send_to_telegram_async(message, session):
     except Exception:
         return False
 
-async def send_no_news_message(hour, session, reason="нет достоверных новостей"):
+async def send_no_news_message(hour, session, company=None):
     """Отправка сообщения об отсутствии новостей"""
-    no_news_message = f"""
+    if company:
+        message = f"""
 🚀 AI News Monitor • {hour:02d}:00 МСК
 
-📝 За последние 2 часа не найдено значимых новостей от отслеживаемых компаний.
+📝 За последние 24 часа не найдено значимых новостей от {company}.
 
-💡 Система отдает приоритет достоверным источникам и официальным анонсам.
+💡 Следующий запрос в {(hour + 1) % 24:02d}:00 МСК будет о другой компании.
+
+🔖 #{company.replace(' ', '')} #ИИ #Новости #Мониторинг
+        """
+    else:
+        message = f"""
+🚀 AI News Monitor • {hour:02d}:00 МСК
+
+📝 За последние 2 часа не найдено значимых новостей.
+
+💡 Система продолжает круглосуточный мониторинг.
 
 🔖 #ИИ #Новости #Мониторинг
-    """
+        """
     
-    return await send_to_telegram_async(no_news_message, session)
+    return await send_to_telegram_async(message, session)
 
 async def publish_hourly_news(hour):
-    """Публикация новости с проверкой достоверности"""
+    """Публикация новости с ротацией компаний"""
     start_time = time.time()
     
     try:
         async with AsyncYandexGPTMonitor() as monitor:
             async with aiohttp.ClientSession() as telegram_session:
-                news_content = await monitor.search_ai_news(hour)
+                news_content, target_company = await monitor.search_ai_news(hour)
                 
                 if news_content:
-                    # Проверяем достоверность источника
-                    source_quality = monitor.validate_news_source(news_content)
+                    # Проверяем наличие ключевых фраз об отсутствии новостей
+                    no_news_phrases = [
+                        "нет новостей", "нет достоверных", "не найдено новостей",
+                        "новостей нет", "пока нет новостей", "no news", "nothing found"
+                    ]
                     
-                    if source_quality == "suspicious":
-                        logger.warning(f"❌ {hour:02d}:00 - Новость помечена как сомнительная")
-                        await send_no_news_message(hour, telegram_session, "сомнительный источник")
-                        return False
-                    elif "нет новостей" in news_content.lower() or "нет достоверных" in news_content.lower():
-                        logger.info(f"ℹ️ {hour:02d}:00 - YandexGPT сообщает об отсутствии новостей")
-                        await send_no_news_message(hour, telegram_session)
+                    if any(phrase in news_content.lower() for phrase in no_news_phrases):
+                        logger.info(f"ℹ️ {hour:02d}:00 - Нет новостей от {target_company}")
+                        await send_no_news_message(hour, telegram_session, target_company)
                         return True
                     
                     # Очищаем и форматируем текст
@@ -275,7 +396,7 @@ async def publish_hourly_news(hour):
                     cleaned_content = []
                     start_adding = False
                     
-                    for i, line in enumerate(lines):
+                    for line in lines:
                         line = line.strip()
                         if not line:
                             continue
@@ -290,21 +411,20 @@ async def publish_hourly_news(hour):
                     
                     telegram_message = '\n'.join(cleaned_content)
                     
-                    # Добавляем пометку о качестве источника
-                    quality_emoji = "✅" if source_quality == "trusted" else "⚠️"
-                    source_note = f"\n\n<em>{quality_emoji} Источник: {source_quality}</em>"
-                    telegram_message += source_note
+                    # Добавляем пометку о времени и компании
+                    time_note = f"\n\n<em>🕐 {hour:02d}:00 МСК • 🏢 {target_company}</em>"
+                    telegram_message += time_note
                     
                     if await send_to_telegram_async(telegram_message, telegram_session):
                         execution_time = time.time() - start_time
-                        logger.info(f"✅ {hour:02d}:00 - Опубликовано ({execution_time:.1f}сек, {source_quality})")
+                        logger.info(f"✅ {hour:02d}:00 - Опубликовано о {target_company} ({execution_time:.1f}сек)")
                         return True
                     else:
                         logger.error(f"❌ {hour:02d}:00 - Ошибка отправки в Telegram")
                         return False
                 else:
-                    logger.error(f"❌ {hour:02d}:00 - Не удалось получить новость")
-                    await send_no_news_message(hour, telegram_session, "ошибка получения")
+                    logger.error(f"❌ {hour:02d}:00 - Не удалось получить новость о {target_company}")
+                    await send_no_news_message(hour, telegram_session, target_company)
                     return False
                     
     except Exception as e:
@@ -317,27 +437,23 @@ async def main():
     msk_time = datetime.now(timezone(timedelta(hours=3)))
     current_hour = msk_time.hour
     
-    logger.info("=" * 50)
-    logger.info("🚀 AI News Monitor - С проверкой достоверности")
+    logger.info("=" * 60)
+    logger.info("🚀 AI News Monitor - Круглосуточный режим 24/7")
     logger.info(f"⏰ Текущее время: {msk_time.strftime('%H:%M')} МСК")
-    logger.info(f"📅 Публикации: {len(PUBLICATION_HOURS)} раз/день (07:00-19:00)")
-    logger.info("🛡️ Режим: Приоритет достоверным источникам")
-    logger.info("=" * 50)
+    logger.info(f"📅 Режим: публикация каждый час")
+    logger.info("=" * 60)
     
-    # Проверяем, нужно ли публиковать в этот час
-    if current_hour in PUBLICATION_HOURS:
-        logger.info(f"🎯 Публикуем новость для {current_hour:02d}:00")
-        success = await publish_hourly_news(current_hour)
-        
-        if success:
-            logger.info(f"🎉 Успешно завершено для {current_hour:02d}:00")
-        else:
-            logger.warning(f"⚠️ Завершено с ошибками для {current_hour:02d}:00")
+    # Всегда публикуем (каждый час)
+    logger.info(f"🎯 Публикуем новость для {current_hour:02d}:00")
+    success = await publish_hourly_news(current_hour)
+    
+    if success:
+        logger.info(f"🎉 Успешно завершено для {current_hour:02d}:00")
     else:
-        logger.info(f"⏸️ {current_hour:02d}:00 - не время публикации")
+        logger.warning(f"⚠️ Завершено с ошибками для {current_hour:02d}:00")
 
 if __name__ == "__main__":
-    # Быстрая проверка переменных
+    # Проверка переменных
     if not all([YANDEX_API_KEY, YANDEX_FOLDER_ID, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID]):
         logger.error("❌ Отсутствуют необходимые переменные окружения")
         exit(1)
