@@ -1,2 +1,1 @@
-aiohttp
-asyncio
+aiohttp==3.9.1
