@@ -115,7 +115,7 @@ class AsyncYandexGPTMonitor:
         Сейчас {hour:02d}:00 МСК ({context} часы).
         
         Критерии:
-        - Google, Microsoft, OpenAI, Meta, Yandex, Apple, Amazon, DeepSeek
+        - OpenAI, Google, Microsoft, Meta, xAI, Anthropic, Apple, Amazon, NVIDIA, Tesla, DeepSeek, Yandex
         - Технические прорывы, обновления, исследования
         - Практическая значимость
         
