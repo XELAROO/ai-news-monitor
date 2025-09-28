@@ -54,6 +54,11 @@ jobs:
         ls -la results/ || echo "No results directory"
         echo "=========================="
         
+    - name: Handle no new news
+      if: steps.parser.outputs.NEWS_COUNT == 0
+      run: |
+        echo "✅ No new news found - nothing to commit"
+        
     - name: Commit results
       if: steps.parser.outputs.NEWS_COUNT > 0
       run: |
