@@ -5,37 +5,33 @@ on:
     - cron: '0 * * * *'  # Каждый час, 24/7
   workflow_dispatch:
 
+# ↓↓↓ ДОБАВИТЬ ЭТОТ БЛОК ↓↓↓
+permissions:
+  contents: write  # Права на запись файлов
+  actions: read    # Права на чтение действий
+  checks: read     # Права на чтение проверок
+# ↑↑↑ ДОБАВИТЬ ЭТОТ БЛОК ↑↑↑
+
 jobs:
   publish-hourly-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10  # Увеличили таймаут
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Используем персональный токен вместо GITHUB_TOKEN
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Если нужен доступ
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          cache: 'pip'  # Ускорит установку
 
-      - name: Install dependencies from requirements.txt
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Debug info
-        run: |
-          echo "📁 Содержимое папки:"
-          ls -la
-          echo "📁 Содержимое папки src:"
-          ls -la src/
-          echo "📄 Содержимое requirements.txt:"
-          cat requirements.txt
-          echo "🕐 Текущее время UTC: $(date -u)"
-          echo "🕐 Текущее время МСК: $(TZ='Europe/Moscow' date)"
 
       - name: Publish hourly AI News
         env:
@@ -44,6 +40,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
         run: |
-          echo "🚀 Запуск монитора в: $(date -u) UTC"
-          echo "🕐 МСК время: $(TZ='Europe/Moscow' date)"
           python src/main.py
