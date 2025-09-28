@@ -3,10 +3,6 @@ FORBES AI - GITHUB PARSER
 Time: 2025-09-28 12:00:07
 New articles: 20
 
-1. DATE: 2 hours ago
-   TITLE: The Economic Singularity And The Five As
-   LINK: https://www.forbes.com/sites/calumchace/2025/09/28/the-economic-singularity-and-the-five-as/?ss=ai
---------------------------------------------------
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
    LINK: https://www.forbes.com/sites/saharhashmi/2025/09/28/why-ai-evals-and-kpis-are-the-new-standard-for-scaling-healthcare-ai/?ss=ai
@@ -78,8 +74,4 @@ New articles: 20
 19. DATE: Sep 24, 2025
    TITLE: Getting Started With Microsoft Copilot: A Guide To Driving ROI
    LINK: https://www.forbes.com/sites/larryenglish/2025/09/24/getting-started-with-microsoft-copilot-a-guide-to-driving-roi/?ss=ai
---------------------------------------------------
-20. DATE: Sep 24, 2025
-   TITLE: Smart Glasses And Our Post-Privacy, Persistently Connected World
-   LINK: https://www.forbes.com/sites/cortneyharding/2025/09/24/smart-glasses-and-our-post-privacy-persistently-connected-world/?ss=ai
 --------------------------------------------------
