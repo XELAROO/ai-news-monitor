@@ -63,7 +63,3 @@ New articles: 16
    TITLE: Beyond The Hype: AI’s Real Impact Is In Quiet Changes All Around Us
    LINK: https://www.forbes.com/sites/victordey/2025/09/24/beyond-the-hypeais-real-impact-is-in-quiet-changes-all-around-us/?ss=ai
 --------------------------------------------------
-17. DATE: Sep 24, 2025
-   TITLE: AI, Democracy, And Jobs
-   LINK: https://www.forbes.com/sites/johnwerner/2025/09/24/ai-democracy-and-jobs/?ss=ai
---------------------------------------------------
