@@ -135,6 +135,7 @@ class ExistingFilesNewsManager:
         # Помечаем новость как отправленную
         self.sent_news.add(news_hash)
         self.save_sent_news()
+        logger.info(f"✅ Новость помечена как отправленная: {news_line[:50]}...")
         
         # Удаляем отправленную новость из файла
         self.remove_news_from_file(filepath, news_line)
@@ -168,20 +169,20 @@ class ExistingFilesNewsManager:
             logger.error(f"❌ Ошибка удаления новости из файла: {e}")
     
     def remove_forbes_news_block(self, content, news_line_to_remove):
-        """Удаляет блок новости из Forbes формата (исправленная версия)"""
+        """Удаляет блок новости из Forbes формата (улучшенная версия)"""
         if '|' not in news_line_to_remove:
             return content
             
-        # Извлекаем заголовок из news_line (формат: "заголовок | url")
-        title_to_remove = news_line_to_remove.split('|')[0].strip()
+        # Извлекаем заголовок и URL из news_line (формат: "заголовок | url")
+        title_to_remove, url_to_remove = [part.strip() for part in news_line_to_remove.split('|', 1)]
         
         blocks = content.split('--------------------------------------------------')
         updated_blocks = []
         removed_count = 0
         
         for block in blocks:
-            # Пропускаем только блок с нужным заголовком
-            if 'TITLE:' in block and title_to_remove in block:
+            # Ищем блок, который соответствует удаляемой новости
+            if self.is_matching_forbes_block(block, title_to_remove, url_to_remove):
                 logger.info(f"🗑️ Удаляю блок с заголовком: {title_to_remove}")
                 removed_count += 1
                 continue
@@ -189,11 +190,54 @@ class ExistingFilesNewsManager:
         
         logger.info(f"📊 Удалено блоков: {removed_count}")
         
+        if removed_count == 0:
+            logger.warning(f"⚠️ Не найден блок для удаления: {title_to_remove}")
+        
         # Обновляем счетчик New articles
         result_content = '--------------------------------------------------'.join(updated_blocks)
         result_content = self.update_articles_count(result_content, removed_count)
         
         return result_content
+
+    def is_matching_forbes_block(self, block, target_title, target_url):
+        """Проверяет, соответствует ли блок Forbes искомой новости"""
+        if 'TITLE:' not in block or 'LINK:' not in block:
+            return False
+        
+        lines = block.strip().split('\n')
+        block_title = None
+        block_url = None
+        
+        for line in lines:
+            line = line.strip()
+            if line.startswith('TITLE:'):
+                block_title = line.replace('TITLE:', '').strip()
+            elif line.startswith('LINK:'):
+                block_url = line.replace('LINK:', '').strip()
+                # Очищаем URL для сравнения
+                block_url = self.clean_forbes_url(block_url)
+        
+        # Сравниваем очищенные URL (это более надежно чем заголовки)
+        if block_url and target_url:
+            # Нормализуем URL для сравнения
+            normalized_block_url = block_url.lower().rstrip('/')
+            normalized_target_url = target_url.lower().rstrip('/')
+            
+            if normalized_block_url == normalized_target_url:
+                logger.info(f"✅ Найден matching блок по URL: {block_url}")
+                return True
+        
+        # Если по URL не нашли, пробуем по заголовку (менее надежно)
+        if block_title and target_title:
+            # Убираем лишние пробелы и приводим к нижнему регистру для сравнения
+            normalized_block_title = ' '.join(block_title.lower().split())
+            normalized_target_title = ' '.join(target_title.lower().split())
+            
+            if normalized_block_title == normalized_target_title:
+                logger.info(f"✅ Найден matching блок по заголовку: {block_title}")
+                return True
+        
+        return False
 
     def update_articles_count(self, content, removed_count=1):
         """Обновляет счетчик New articles в Forbes формате"""
@@ -252,7 +296,7 @@ class ExistingFilesNewsManager:
                     if has_title and has_link:
                         news_blocks += 1
             
-            logger.info(f"📊 В файле найдено блоков с новостями: {news_blocks}")
+            logger.info(f"📊 В файле найдено блоков с новостей: {news_blocks}")
             return news_blocks > 0
         
         else:
@@ -372,11 +416,21 @@ async def process_news_for_telegram():
     
     news_line, news_hash, filepath = news_data
     
+    # Проверяем, не отправляли ли мы уже эту новость (дополнительная проверка)
+    if news_hash in news_manager.sent_news:
+        logger.warning(f"⚠️ Новость уже была отправлена, но все еще в файле: {news_line[:50]}...")
+        # Помечаем как отправленную и удаляем из файла
+        news_manager.mark_news_sent_and_cleanup(news_hash, news_line, filepath)
+        return True
+    
     # Парсим новость (формат: "заголовок | URL")
     if '|' in news_line:
         title, url = [part.strip() for part in news_line.split('|', 1)]
     else:
         title, url = news_line, ""
+
+    logger.info(f"📨 Подготовка к отправке: {title}")
+    logger.info(f"🔗 URL: {url}")
 
     # Создаем промпт для YandexGPT с явным указанием форматирования
     prompt = f"""
