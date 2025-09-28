@@ -179,6 +179,45 @@ class ExistingFilesNewsManager:
         except Exception as e:
             logger.error(f"❌ Ошибка удаления файла: {e}")
 
+    def parse_forbes_format(self, content):
+    """Парсит специфический формат Forbes и очищает URL"""
+        news_lines = []
+        blocks = content.split('--------------------------------------------------')
+    
+    for block in blocks:
+        if 'TITLE:' in block and 'LINK:' in block:
+            lines = block.strip().split('\n')
+            title = None
+            link = None
+            
+            for line in lines:
+                line = line.strip()
+                if line.startswith('TITLE:'):
+                    title = line.replace('TITLE:', '').strip()
+                elif line.startswith('LINK:'):
+                    link = line.replace('LINK:', '').strip()
+                    # Очищаем URL от параметров ?ss=ai
+                    link = self.clean_forbes_url(link)
+            
+            if title and link:
+                news_lines.append(f"{title} | {link}")
+    
+    logger.info(f"📰 Распаршено {len(news_lines)} новостей из Forbes формата")
+    return news_lines
+
+    def clean_forbes_url(self, url):
+        """Очищает Forbes URL от параметров ?ss=ai и других трекеров"""
+        try:
+            # Удаляем параметры ?ss=ai и другие UTM-метки
+            if '?' in url:
+                base_url = url.split('?')[0]
+                logger.info(f"🔗 Очищен URL: {url} -> {base_url}")
+                return base_url
+            return url
+        except Exception as e:
+            logger.error(f"❌ Ошибка очистки URL {url}: {e}")
+            return url
+
 class AsyncYandexGPTMonitor:
     def __init__(self):
         self.api_url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
