@@ -34,24 +34,30 @@ jobs:
         python -m pip install --upgrade pip
         pip install selenium webdriver-manager
         
+    - name: Create results directory
+      run: mkdir -p results
+      
     - name: Run Forbes Parser
       id: parser
       run: |
         cd src
         python forbes_github.py
-        echo "NEWS_COUNT=$(( $(find . -name '*.txt' -exec cat {} \; | grep -c 'LINK:' 2>/dev/null || echo 0) ))" >> $GITHUB_OUTPUT
+        echo "NEWS_COUNT=$(cat ../news_count.txt)" >> $GITHUB_OUTPUT
         
-    - name: Show results
+    - name: Show files before commit
       run: |
-        echo "=== PARSER RESULTS ==="
-        find . -name '*.txt' -path '*/results/*' -exec echo "File: {}" \; -exec cat {} \; || echo "No results found"
-        echo "======================"
+        echo "=== FILES IN REPOSITORY ==="
+        find . -name '*.txt' -o -name '*.json' | head -20
+        echo "=== RESULTS DIRECTORY ==="
+        ls -la results/ || echo "No results directory"
+        echo "=========================="
         
     - name: Commit results
       if: steps.parser.outputs.NEWS_COUNT > 0
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add .
+        git add results/ last_news.json news_count.txt
+        git status
         git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
         git push
