@@ -21,29 +21,34 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHANNEL_ID = os.getenv('TELEGRAM_CHANNEL_ID')
 
 class ExistingFilesNewsManager:
-    def __init__(self, files_pattern="results/github_*.txt", sent_file="sent_news.json"):
+    def __init__(self, files_pattern="../results/github_*.txt", sent_file="../sent_news.json"):
         self.files_pattern = files_pattern
         self.sent_file = sent_file
         self.sent_news = self.load_sent_news()
     
     def load_sent_news(self):
         """Загружает отправленные новости"""
-        if os.path.exists(self.sent_file):
-            try:
+        try:
+            if os.path.exists(self.sent_file):
                 with open(self.sent_file, 'r', encoding='utf-8') as f:
-                    return set(json.load(f))
-            except Exception as e:
-                logger.error(f"❌ Ошибка загрузки sent_news.json: {e}")
+                    data = json.load(f)
+                    logger.info(f"📖 Загружено {len(data)} отправленных новостей из {self.sent_file}")
+                    return set(data)
+            else:
+                logger.info(f"📝 Файл {self.sent_file} не существует, создадим новый")
                 return set()
-        return set()
+        except Exception as e:
+            logger.error(f"❌ Ошибка загрузки {self.sent_file}: {e}")
+            return set()
     
     def save_sent_news(self):
         """Сохраняет отправленные новости"""
         try:
             with open(self.sent_file, 'w', encoding='utf-8') as f:
                 json.dump(list(self.sent_news), f, ensure_ascii=False, indent=2)
+            logger.info(f"💾 Сохранено {len(self.sent_news)} отправленных новостей в {self.sent_file}")
         except Exception as e:
-            logger.error(f"❌ Ошибка сохранения sent_news.json: {e}")
+            logger.error(f"❌ Ошибка сохранения {self.sent_file}: {e}")
     
     def parse_news_file(self, filepath):
         """Парсит файл в любом формате (Forbes или простом)"""
@@ -132,20 +137,28 @@ class ExistingFilesNewsManager:
     
     def mark_news_sent_and_cleanup(self, news_hash, news_line, filepath):
         """Помечает новость как отправленную и чистит файлы"""
-        # Помечаем новость как отправленную
-        self.sent_news.add(news_hash)
-        self.save_sent_news()
-        logger.info(f"✅ Новость помечена как отправленная: {news_line[:50]}...")
-        
-        # Удаляем отправленную новость из файла
-        self.remove_news_from_file(filepath, news_line)
-        
-        # Удаляем пустой файл если нужно
-        self.remove_empty_file(filepath)
+        try:
+            # Помечаем новость как отправленную
+            self.sent_news.add(news_hash)
+            self.save_sent_news()
+            logger.info(f"✅ Новость помечена как отправленная: {news_line[:50]}...")
+            
+            # Удаляем отправленную новость из файла
+            self.remove_news_from_file(filepath, news_line)
+            
+            # Удаляем пустой файл если нужно
+            self.remove_empty_file(filepath)
+        except Exception as e:
+            logger.error(f"❌ Ошибка в mark_news_sent_and_cleanup: {e}")
     
     def remove_news_from_file(self, filepath, news_line_to_remove):
         """Удаляет конкретную новость из файла"""
         try:
+            # Проверяем существует ли файл
+            if not os.path.exists(filepath):
+                logger.warning(f"⚠️ Файл {filepath} не существует для удаления новости")
+                return
+            
             # Читаем файл с помощью парсера для сохранения формата
             with open(filepath, 'r', encoding='utf-8') as f:
                 original_content = f.read()
@@ -159,22 +172,30 @@ class ExistingFilesNewsManager:
                 updated_lines = [line for line in lines if line.strip() != news_line_to_remove]
                 updated_content = '\n'.join(updated_lines)
             
-            # Перезаписываем файл
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(updated_content)
+            # Перезаписываем файл только если есть изменения
+            if updated_content != original_content:
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    f.write(updated_content)
+                    
+                logger.info(f"🗑️ Удалена отправленная новость из {os.path.basename(filepath)}")
+            else:
+                logger.warning(f"⚠️ Не удалось найти и удалить новость из файла {os.path.basename(filepath)}")
                 
-            logger.info(f"🗑️ Удалена отправленная новость из {os.path.basename(filepath)}")
-            
         except Exception as e:
-            logger.error(f"❌ Ошибка удаления новости из файла: {e}")
+            logger.error(f"❌ Ошибка удаления новости из файла {filepath}: {e}")
     
     def remove_forbes_news_block(self, content, news_line_to_remove):
         """Удаляет блок новости из Forbes формата (улучшенная версия)"""
         if '|' not in news_line_to_remove:
+            logger.warning(f"⚠️ Неверный формат news_line: {news_line_to_remove}")
             return content
             
         # Извлекаем заголовок и URL из news_line (формат: "заголовок | url")
-        title_to_remove, url_to_remove = [part.strip() for part in news_line_to_remove.split('|', 1)]
+        try:
+            title_to_remove, url_to_remove = [part.strip() for part in news_line_to_remove.split('|', 1)]
+        except ValueError:
+            logger.error(f"❌ Ошибка разбора news_line: {news_line_to_remove}")
+            return content
         
         blocks = content.split('--------------------------------------------------')
         updated_blocks = []
@@ -192,10 +213,14 @@ class ExistingFilesNewsManager:
         
         if removed_count == 0:
             logger.warning(f"⚠️ Не найден блок для удаления: {title_to_remove}")
+            # Дополнительная отладка
+            logger.info(f"🔍 Искали заголовок: '{title_to_remove}'")
+            logger.info(f"🔍 Искали URL: '{url_to_remove}'")
         
         # Обновляем счетчик New articles
         result_content = '--------------------------------------------------'.join(updated_blocks)
-        result_content = self.update_articles_count(result_content, removed_count)
+        if removed_count > 0:
+            result_content = self.update_articles_count(result_content, removed_count)
         
         return result_content
 
@@ -235,6 +260,12 @@ class ExistingFilesNewsManager:
             
             if normalized_block_title == normalized_target_title:
                 logger.info(f"✅ Найден matching блок по заголовку: {block_title}")
+                return True
+        
+        # Дополнительная проверка: ищем частичное совпадение в заголовке
+        if block_title and target_title:
+            if target_title.lower() in block_title.lower() or block_title.lower() in target_title.lower():
+                logger.info(f"✅ Найден matching блок по частичному заголовку: {block_title}")
                 return True
         
         return False
@@ -405,7 +436,7 @@ async def send_to_telegram_async(message, session):
 
 async def process_news_for_telegram():
     """Основная функция обработки новостей - ТОЛЬКО если есть новости"""
-    news_manager = ExistingFilesNewsManager("results/github_*.txt")
+    news_manager = ExistingFilesNewsManager("../results/github_*.txt", "../sent_news.json")
     
     # Получаем самую старую непрочитанную новость
     news_data = news_manager.get_oldest_unsent_news()
