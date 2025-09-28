@@ -108,30 +108,34 @@ def parse_forbes_ai():
         articles = []
         found_known_news = False
         
-        print("🔍 Finding news...")
-        # Ищем КОНТЕЙНЕРЫ статей, а не отдельные time элементы
-        article_containers = driver.find_elements(By.CSS_SELECTOR, "article, [data-test-id], .stream-item")
-        print(f"📦 Found containers: {len(article_containers)}")
+        print("🔍 Finding news by structure...")
         
-        # Если не нашли контейнеры, ищем по структуре
-        if not article_containers:
-            print("🔍 Alternative search...")
-            # Ищем все блоки, содержащие time и заголовок
-            article_containers = driver.find_elements(By.XPATH, "//div[.//time and .//h3]")
-            print(f"📦 Alternative containers: {len(article_containers)}")
+        # СПОСОБ 1: Ищем по структуре - div содержащие time и h3
+        containers = driver.find_elements(By.XPATH, "//div[.//time and .//h3//a]")
+        print(f"📦 Found structured containers: {len(containers)}")
         
-        for container in article_containers:
+        # Отладочная информация
+        print("🔍 Debug structure:")
+        for i, container in enumerate(containers[:3]):
+            try:
+                time_elem = container.find_element(By.TAG_NAME, "time")
+                title_elem = container.find_element(By.XPATH, ".//h3//a")
+                print(f"  Container {i}: time='{time_elem.text}', title='{title_elem.text[:30]}...'")
+            except:
+                print(f"  Container {i}: invalid structure")
+        
+        for container in containers:
             if found_known_news:
                 break
+                
             try:
-                # Ищем time ВНУТРИ этого контейнера
+                # Ищем время и заголовок ВНУТРИ контейнера
                 time_elem = container.find_element(By.TAG_NAME, "time")
                 date_text = time_elem.text.strip()
                 if not date_text:
                     continue
                 
-                # Ищем заголовок ВНУТРИ этого же контейнера
-                title_elem = container.find_element(By.CSS_SELECTOR, "h3 a, h2 a, h4 a")
+                title_elem = container.find_element(By.XPATH, ".//h3//a")
                 title = title_elem.text.strip()
                 href = title_elem.get_attribute('href')
                 
@@ -143,7 +147,7 @@ def parse_forbes_ai():
                         'fingerprint': generate_fingerprint(title, href)
                     }
                     
-                    # Проверяем на дубликаты по ссылке
+                    # Проверяем на дубликаты
                     if any(a['link'] == href for a in articles):
                         continue
                     
@@ -156,8 +160,47 @@ def parse_forbes_ai():
                     print(f"✅ {len(articles)}: {date_text} - {title[:50]}...")
                     
             except Exception as e:
-                # Пропускаем контейнеры без нужных элементов
                 continue
+        
+        # СПОСОБ 2: Прямой поиск всех h3 с ссылками
+        if len(articles) < 5:
+            print("🔍 Alternative: direct h3 search...")
+            h3_links = driver.find_elements(By.XPATH, "//h3//a")
+            print(f"🔗 Found h3 links: {len(h3_links)}")
+            
+            for h3_link in h3_links:
+                if found_known_news:
+                    break
+                    
+                try:
+                    title = h3_link.text.strip()
+                    href = h3_link.get_attribute('href')
+                    
+                    if title and href and len(title) > 10:
+                        # Ищем ближайший time элемент
+                        time_elem = h3_link.find_element(By.XPATH, "./ancestor::div[1]//time")
+                        date_text = time_elem.text.strip()
+                        
+                        current_article = {
+                            'date': date_text,
+                            'title': title,
+                            'link': href,
+                            'fingerprint': generate_fingerprint(title, href)
+                        }
+                        
+                        if any(a['link'] == href for a in articles):
+                            continue
+                            
+                        if last_news and is_same_news(current_article, last_news):
+                            print(f"🛑 Reached known news: {title[:60]}...")
+                            found_known_news = True
+                            break
+                        
+                        articles.append(current_article)
+                        print(f"✅ {len(articles)}: {date_text} - {title[:50]}...")
+                        
+                except Exception as e:
+                    continue
         
         if articles:
             save_last_news(articles[0])
