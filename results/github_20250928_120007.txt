@@ -1,7 +1,7 @@
 FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-28 12:00:07
-New articles: 13
+New articles: 12
 
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
@@ -50,8 +50,4 @@ New articles: 13
 13. DATE: Sep 25, 2025
    TITLE: Why AEO May Be The Most Dangerous Acronym In AI
    LINK: https://www.forbes.com/sites/jasonsnyder/2025/09/25/why-aeo-may-be-the-most-dangerous-acronym-in-ai/?ss=ai
---------------------------------------------------
-14. DATE: Sep 25, 2025
-   TITLE: AI Models Acted Like Voters In 2024 And The Findings Are Startling
-   LINK: https://www.forbes.com/sites/ronschmelzer/2025/09/25/ai-models-acted-like-voters-in-2024-and-the-findings-are-startling/?ss=ai
 --------------------------------------------------
