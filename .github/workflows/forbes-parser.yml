@@ -44,7 +44,9 @@ jobs:
       id: parser
       run: |
         python forbes_github.py
-        echo "NEWS_COUNT=$(cat news_count.txt)" >> $GITHUB_OUTPUT
+        NEWS_COUNT=$(cat news_count.txt)
+        echo "NEWS_COUNT=$NEWS_COUNT" >> $GITHUB_OUTPUT
+        echo "News count: $NEWS_COUNT"
         
     - name: Show files before commit
       run: |
@@ -54,13 +56,8 @@ jobs:
         ls -la results/ || echo "No results directory"
         echo "=========================="
         
-    - name: Handle no new news
-      if: steps.parser.outputs.NEWS_COUNT == 0
-      run: |
-        echo "✅ No new news found - nothing to commit"
-        
     - name: Commit results
-      if: steps.parser.outputs.NEWS_COUNT > 0
+      if: env.NEWS_COUNT > 0
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -71,5 +68,10 @@ jobs:
         git pull origin main --rebase --autostash
         
         # Затем коммитим и пушим
-        git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
+        git commit -m "🤖 Auto-update: ${{ env.NEWS_COUNT }} новых новостей Forbes AI"
         git push origin main
+        
+    - name: No new news
+      if: env.NEWS_COUNT == 0
+      run: |
+        echo "✅ No new news found - workflow completed successfully"
