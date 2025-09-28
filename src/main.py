@@ -5,6 +5,7 @@ import json
 import glob
 import logging
 import time
+import base64
 from datetime import datetime, timezone, timedelta
 
 # Настройка логирования
@@ -381,8 +382,248 @@ class AsyncYandexGPTMonitor:
             logger.error(f"❌ Ошибка: {e}")
             return None
 
+class AsyncYandexArtGenerator:
+    def __init__(self):
+        self.api_url = "https://llm.api.cloud.yandex.net/foundationModels/v1/imageGenerationAsync"
+        self.headers = {
+            "Authorization": f"Api-Key {YANDEX_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        self.session = None
+        
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            await self.session.close()
+
+    async def generate_image(self, prompt):
+        """Генерация изображения через Yandex ART"""
+        try:
+            data = {
+                "modelUri": f"art://{YANDEX_FOLDER_ID}/yandex-art/latest",
+                "generationOptions": {
+                    "seed": int(time.time()) % 1000000
+                },
+                "messages": [
+                    {
+                        "weight": 1,
+                        "text": prompt
+                    }
+                ]
+            }
+
+            logger.info(f"🎨 Запрос генерации изображения: {prompt}")
+            
+            # 1. Запуск генерации
+            async with self.session.post(
+                self.api_url, 
+                headers=self.headers, 
+                json=data, 
+                timeout=aiohttp.ClientTimeout(total=120)
+            ) as response:
+                
+                if response.status == 200:
+                    result = await response.json()
+                    if 'id' in result:
+                        task_id = result['id']
+                        logger.info(f"🔄 Задача генерации создана: {task_id}")
+                        
+                        # 2. Ожидание завершения генерации
+                        image_bytes = await self._wait_for_generation(task_id)
+                        return image_bytes
+                    else:
+                        logger.error("❌ Неверный формат ответа генерации")
+                        return None
+                else:
+                    error_text = await response.text()
+                    logger.error(f"❌ Ошибка API генерации: {response.status} - {error_text}")
+                    return None
+                    
+        except asyncio.TimeoutError:
+            logger.error("❌ Таймаут генерации изображения (120 сек)")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Ошибка генерации: {e}")
+            return None
+
+    async def _wait_for_generation(self, task_id, max_attempts=30, delay=5):
+        """Ожидание завершения генерации изображения"""
+        check_url = f"https://llm.api.cloud.yandex.net/operations/{task_id}"
+        
+        for attempt in range(max_attempts):
+            try:
+                logger.info(f"⏳ Проверка генерации ({attempt + 1}/{max_attempts})...")
+                
+                async with self.session.get(
+                    check_url, 
+                    headers=self.headers, 
+                    timeout=aiohttp.ClientTimeout(total=30)
+                ) as response:
+                    
+                    if response.status == 200:
+                        result = await response.json()
+                        
+                        if result.get('done', False):
+                            if 'response' in result:
+                                # Декодируем base64 изображение
+                                image_base64 = result['response']['image']
+                                image_bytes = base64.b64decode(image_base64)
+                                logger.info(f"✅ Изображение сгенерировано ({len(image_bytes)} байт)")
+                                return image_bytes
+                            else:
+                                logger.error("❌ Ошибка в ответе генерации")
+                                return None
+                        else:
+                            # Генерация еще не завершена
+                            await asyncio.sleep(delay)
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"❌ Ошибка проверки генерации: {response.status}")
+                        await asyncio.sleep(delay)
+                        
+            except Exception as e:
+                logger.error(f"❌ Ошибка при проверке генерации: {e}")
+                await asyncio.sleep(delay)
+        
+        logger.error("❌ Превышено время ожидания генерации")
+        return None
+
+async def send_photo_to_telegram(image_bytes, caption, session):
+    """Асинхронная отправка фото в Telegram"""
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+        
+        form_data = aiohttp.FormData()
+        form_data.add_field('chat_id', TELEGRAM_CHANNEL_ID)
+        form_data.add_field('photo', image_bytes, filename='news_image.jpg')
+        form_data.add_field('caption', caption)
+        form_data.add_field('parse_mode', 'HTML')
+        
+        async with session.post(url, data=form_data, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            if response.status == 200:
+                logger.info("✅ Фото отправлено в Telegram")
+                return True
+            else:
+                error_text = await response.text()
+                logger.error(f"❌ Ошибка отправки фото: {response.status} - {error_text}")
+                return False
+    except Exception as e:
+        logger.error(f"❌ Ошибка отправки фото: {e}")
+        return False
+
+def remove_url_from_text(text):
+    """Удаляет строку с ссылкой из текста"""
+    lines = text.split('\n')
+    cleaned_lines = []
+    for line in lines:
+        if not line.strip().startswith('🔗'):
+            cleaned_lines.append(line)
+    return '\n'.join(cleaned_lines)
+
+def extract_prompt_from_summary(summarized_news):
+    """Извлекает заголовок для промпта генерации изображения"""
+    lines = summarized_news.split('\n')
+    for line in lines:
+        if line.startswith('🚀'):
+            # Берем заголовок без эмодзи и ограничиваем длину
+            title = line.replace('🚀', '').strip()
+            # Создаем промпт на английском для лучшей генерации
+            prompt = f"News illustration: {title}, digital art, modern style, professional news image"
+            return prompt[:200]  # Ограничиваем длину промпта
+    return "Breaking news, digital art, modern style"
+
+async def process_news_for_telegram():
+    """Основная функция обработки новостей с генерацией изображения"""
+    news_manager = ExistingFilesNewsManager("results/github_*.txt")
+    
+    # Получаем самую старую непрочитанную новость
+    news_data = news_manager.get_oldest_unsent_news()
+    
+    if not news_data:
+        logger.info("ℹ️ Нет новых новостей - пропускаем отправку")
+        return True
+    
+    news_line, news_hash, filepath = news_data
+    
+    # Проверяем, не отправляли ли мы уже эту новость
+    if news_hash in news_manager.sent_news:
+        logger.warning(f"⚠️ Новость уже была отправлена, но все еще в файле: {news_line[:50]}...")
+        news_manager.mark_news_sent_and_cleanup(news_hash, news_line, filepath)
+        return True
+    
+    # Парсим новость
+    if '|' in news_line:
+        title, url = [part.strip() for part in news_line.split('|', 1)]
+    else:
+        title, url = news_line, ""
+
+    logger.info(f"📨 Подготовка к отправке: {title}")
+
+    # Создаем промпт для YandexGPT БЕЗ ссылки в формате
+    prompt = f"""
+ЗАДАЧА: Перевести на русский и создать краткий пересказ новости: {title}
+
+ТРЕБОВАНИЯ К ФОРМАТУ БЛОКОВ:
+1. Заголовок: краткий, привлекающий внимание
+2. Текст: 3-5 предложения, только ключевые факты  
+3. Вывод: практическая польза/значение
+4. Хештеги: 3-5 релевантных тегов на русском
+- Пустая строка: разделитель блоков 1,2,3
+- Ничего лишнего, кроме указанного
+
+ФОРМАТ БЛОКОВ (СОБЛЮДАЙ ТОЧНО!):
+
+🚀 Переведенный заголовок на русском
+
+📝 3-5 предложения пересказа на русском
+
+💡 1 предложение о практическом значении
+
+🔖 #[тематика] #[тематика] #[тематика] #[компания]
+
+МЕЖДУ КАЖДЫМ БЛОКОМ - ПУСТАЯ СТРОКА!
+"""
+    
+    # Получаем текст от YandexGPT
+    async with AsyncYandexGPTMonitor() as monitor:
+        summarized_news = await monitor.yandex_gpt_call(prompt)
+    
+    if summarized_news:
+        # Удаляем ссылку из текста (если вдруг она есть)
+        cleaned_text = remove_url_from_text(summarized_news)
+        
+        # Генерируем изображение
+        image_prompt = extract_prompt_from_summary(cleaned_text)
+        async with AsyncYandexArtGenerator() as art_generator:
+            image_bytes = await art_generator.generate_image(image_prompt)
+        
+        # Отправляем в Telegram
+        async with aiohttp.ClientSession() as session:
+            if image_bytes:
+                # Отправляем фото с полным текстом как подписью
+                success = await send_photo_to_telegram(image_bytes, cleaned_text, session)
+            else:
+                # Если изображение не сгенерировалось, отправляем только текст
+                logger.warning("⚠️ Изображение не сгенерировано, отправляем только текст")
+                success = await send_to_telegram_async(cleaned_text, session)
+            
+            if success:
+                # Помечаем как отправленную и чистим файлы
+                news_manager.mark_news_sent_and_cleanup(news_hash, news_line, filepath)
+                logger.info("✅ Новость успешно отправлена и файлы очищены")
+                return True
+            else:
+                logger.error("❌ Ошибка отправки в Telegram")
+                return False
+    else:
+        logger.error("❌ Не удалось обработать новость через YandexGPT")
+        return False
+
 async def send_to_telegram_async(message, session):
-    """Асинхронная отправка в Telegram"""
+    """Асинхронная отправка текста в Telegram (fallback)"""
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {
@@ -402,92 +643,13 @@ async def send_to_telegram_async(message, session):
     except Exception as e:
         logger.error(f"❌ Ошибка отправки в Telegram: {e}")
         return False
-
-async def process_news_for_telegram():
-    """Основная функция обработки новостей - ТОЛЬКО если есть новости"""
-    news_manager = ExistingFilesNewsManager("results/github_*.txt")
-    
-    # Получаем самую старую непрочитанную новость
-    news_data = news_manager.get_oldest_unsent_news()
-    
-    if not news_data:
-        logger.info("ℹ️ Нет новых новостей - пропускаем отправку")
-        return True
-    
-    news_line, news_hash, filepath = news_data
-    
-    # Проверяем, не отправляли ли мы уже эту новость (дополнительная проверка)
-    if news_hash in news_manager.sent_news:
-        logger.warning(f"⚠️ Новость уже была отправлена, но все еще в файле: {news_line[:50]}...")
-        # Помечаем как отправленную и удаляем из файла
-        news_manager.mark_news_sent_and_cleanup(news_hash, news_line, filepath)
-        return True
-    
-    # Парсим новость (формат: "заголовок | URL")
-    if '|' in news_line:
-        title, url = [part.strip() for part in news_line.split('|', 1)]
-    else:
-        title, url = news_line, ""
-
-    logger.info(f"📨 Подготовка к отправке: {title}")
-    logger.info(f"🔗 URL: {url}")
-
-    # Создаем промпт для YandexGPT с явным указанием форматирования
-    prompt = f"""
-ЗАДАЧА: Перевести на русский и создать краткий пересказ новости: {url}
-
-ТРЕБОВАНИЯ К ФОРМАТУ БЛОКОВ:
-1. Заголовок: краткий, привлекающий внимание
-2. Текст: 3-5 предложения, только ключевые факты
-3. Вывод: практическая польза/значение
-4. Ссылка: оригинальный URL без анкора
-5. Хештеги: 3-5 релевантных тегов на русском
-- Пустая строка: разделитель болков 1,2,3,4
-- Ничего лишнего, кроме указанного
-
-ФОРМАТ БЛОКОВ (СОБЛЮДАЙ ТОЧНО!):
-
-🚀 Переведенный заголовок на русском
-
-📝 3-5 предложения пересказа на русском
-
-💡 1 предложение о практическом значении
-
-🔗 {url}
-
-🔖 #[тематика] #[тематика] #[тематика] #[компания]
-
-МЕЖДУ КАЖДЫМ БЛОКОМ - ПУСТАЯ СТРОКА!
-"""
-    
-    # Отправляем в YandexGPT
-    async with AsyncYandexGPTMonitor() as monitor:
-        summarized_news = await monitor.yandex_gpt_call(prompt)
-    
-    if summarized_news:
-        # Отправляем в Telegram
-        async with aiohttp.ClientSession() as session:
-            success = await send_to_telegram_async(summarized_news, session)
-            
-            if success:
-                # Помечаем как отправленную и чистим файлы
-                news_manager.mark_news_sent_and_cleanup(news_hash, news_line, filepath)
-                logger.info("✅ Новость успешно отправлена и файлы очищены")
-                return True
-            else:
-                logger.error("❌ Ошибка отправки в Telegram")
-                return False
-    else:
-        logger.error("❌ Не удалось обработать новость через YandexGPT")
-        return False
         
 async def main():
     """Основная функция"""
     msk_time = datetime.now(timezone(timedelta(hours=3)))
-    current_hour = msk_time.hour
     
     logger.info("=" * 60)
-    logger.info("🚀 AI News Monitor - Обработка новостей из файлов")
+    logger.info("🚀 AI News Monitor - Обработка новостей с генерацией изображений")
     logger.info(f"⏰ Текущее время: {msk_time.strftime('%H:%M')} МСК")
     logger.info("=" * 60)
     
