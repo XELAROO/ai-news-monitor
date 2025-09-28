@@ -84,7 +84,7 @@ def setup_selenium():
             return None
 
 def parse_forbes_ai():
-    print("🚀 Starting parser...")
+    print("🚀 Starting parser with precise XPath...")
     
     if not SELENIUM_AVAILABLE:
         return []
@@ -103,41 +103,36 @@ def parse_forbes_ai():
         
         print("📄 Loading Forbes AI...")
         driver.get("https://www.forbes.com/ai/")
-        time.sleep(10)
+        time.sleep(8)
         
         articles = []
         found_known_news = False
         
-        print("🔍 Finding news by structure...")
+        print("🔍 Finding news using precise XPath...")
         
-        # СПОСОБ 1: Ищем по структуре - div содержащие time и h3
-        containers = driver.find_elements(By.XPATH, "//div[.//time and .//h3//a]")
-        print(f"📦 Found structured containers: {len(containers)}")
+        # Проверяем, что заголовок "More From AI" существует
+        try:
+            more_from_ai = driver.find_element(By.XPATH, '//*[@id="row-2"]/div/div/div/div[1]/div[1]/h2')
+            print("✅ Found 'More From AI' section")
+        except:
+            print("❌ 'More From AI' section not found")
+            return []
         
-        # Отладочная информация
-        print("🔍 Debug structure:")
-        for i, container in enumerate(containers[:3]):
+        # Парсим новости начиная с первой
+        news_index = 1
+        while True:
             try:
-                time_elem = container.find_element(By.TAG_NAME, "time")
-                title_elem = container.find_element(By.XPATH, ".//h3//a")
-                print(f"  Container {i}: time='{time_elem.text}', title='{title_elem.text[:30]}...'")
-            except:
-                print(f"  Container {i}: invalid structure")
-        
-        for container in containers:
-            if found_known_news:
-                break
-                
-            try:
-                # Ищем время и заголовок ВНУТРИ контейнера
-                time_elem = container.find_element(By.TAG_NAME, "time")
+                # XPath для времени новости
+                time_xpath = f'//*[@id="row-2"]/div/div/div/div[1]/div[2]/div[{news_index}]/div/div/div[2]/div[1]/time'
+                time_elem = driver.find_element(By.XPATH, time_xpath)
                 date_text = time_elem.text.strip()
-                if not date_text:
-                    continue
                 
-                title_elem = container.find_element(By.XPATH, ".//h3//a")
-                title = title_elem.text.strip()
-                href = title_elem.get_attribute('href')
+                # XPath для заголовка новости
+                title_xpath = f'//*[@id="row-2"]/div/div/div/div[1]/div[2]/div[{news_index}]/div/div/div[2]/h3'
+                title_elem = driver.find_element(By.XPATH, title_xpath)
+                title_link = title_elem.find_element(By.TAG_NAME, "a")
+                title = title_link.text.strip()
+                href = title_link.get_attribute('href')
                 
                 if title and href and len(title) > 10:
                     current_article = {
@@ -147,10 +142,7 @@ def parse_forbes_ai():
                         'fingerprint': generate_fingerprint(title, href)
                     }
                     
-                    # Проверяем на дубликаты
-                    if any(a['link'] == href for a in articles):
-                        continue
-                    
+                    # Проверяем, не дошли ли до известной новости
                     if last_news and is_same_news(current_article, last_news):
                         print(f"🛑 Reached known news: {title[:60]}...")
                         found_known_news = True
@@ -159,52 +151,16 @@ def parse_forbes_ai():
                     articles.append(current_article)
                     print(f"✅ {len(articles)}: {date_text} - {title[:50]}...")
                     
+                news_index += 1
+                
             except Exception as e:
-                continue
-        
-        # СПОСОБ 2: Прямой поиск всех h3 с ссылками
-        if len(articles) < 5:
-            print("🔍 Alternative: direct h3 search...")
-            h3_links = driver.find_elements(By.XPATH, "//h3//a")
-            print(f"🔗 Found h3 links: {len(h3_links)}")
-            
-            for h3_link in h3_links:
-                if found_known_news:
-                    break
-                    
-                try:
-                    title = h3_link.text.strip()
-                    href = h3_link.get_attribute('href')
-                    
-                    if title and href and len(title) > 10:
-                        # Ищем ближайший time элемент
-                        time_elem = h3_link.find_element(By.XPATH, "./ancestor::div[1]//time")
-                        date_text = time_elem.text.strip()
-                        
-                        current_article = {
-                            'date': date_text,
-                            'title': title,
-                            'link': href,
-                            'fingerprint': generate_fingerprint(title, href)
-                        }
-                        
-                        if any(a['link'] == href for a in articles):
-                            continue
-                            
-                        if last_news and is_same_news(current_article, last_news):
-                            print(f"🛑 Reached known news: {title[:60]}...")
-                            found_known_news = True
-                            break
-                        
-                        articles.append(current_article)
-                        print(f"✅ {len(articles)}: {date_text} - {title[:50]}...")
-                        
-                except Exception as e:
-                    continue
+                # Если не нашли элемент - значит новости закончились
+                print(f"📭 No more news found (index {news_index})")
+                break
         
         if articles:
             save_last_news(articles[0])
-            print(f"💾 New last news: {articles[0]['title'][:60]}...")
+            print(f"💾 New last news saved: {articles[0]['title'][:60]}...")
         
         return articles
         
@@ -214,7 +170,7 @@ def parse_forbes_ai():
     finally:
         if driver:
             driver.quit()
-
+            
 def save_results(articles):
     ensure_dirs()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
