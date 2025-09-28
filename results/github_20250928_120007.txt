@@ -1,7 +1,7 @@
 FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-28 12:00:07
-New articles: 11
+New articles: 10
 
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
@@ -42,8 +42,4 @@ New articles: 11
 11. DATE: Sep 26, 2025
    TITLE: The 7 Cyber Security Trends Of 2026 That Everyone Must Be Ready For
    LINK: https://www.forbes.com/sites/bernardmarr/2025/09/26/the-7-biggest-cyber-security-trends-of-2026-that-everyone-must-be-ready-for/?ss=ai
---------------------------------------------------
-12. DATE: Sep 26, 2025
-   TITLE: How Agentic AI Can Safely Fill Critical Mental Health Care Gaps
-   LINK: https://www.forbes.com/sites/saharhashmi/2025/09/26/the-future-of-mental-health-care-how-agentic-ai-could-fill-critical-gaps/?ss=ai
 --------------------------------------------------
