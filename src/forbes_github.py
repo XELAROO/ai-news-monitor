@@ -14,23 +14,27 @@ try:
 except ImportError:
     SELENIUM_AVAILABLE = False
 
-# Сохраняем файлы в корень репозитория (на уровень выше src)
-LAST_NEWS_FILE = '../last_news.json'
-RESULTS_DIR = '../results'
+# Сохраняем в корень репозитория (относительно src/)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LAST_NEWS_FILE = os.path.join(BASE_DIR, 'last_news.json')
+RESULTS_DIR = os.path.join(BASE_DIR, 'results')
+NEWS_COUNT_FILE = os.path.join(BASE_DIR, 'news_count.txt')
 
 def ensure_dirs():
+    """Создает директории если их нет"""
     os.makedirs(RESULTS_DIR, exist_ok=True)
+    print(f"📁 Results dir: {RESULTS_DIR}")
 
 def generate_fingerprint(title, url):
-    content = f"{title}|{url}"
-    return hashlib.md5(content.encode()).hexdigest()
+    return hashlib.md5(f"{title}|{url}".encode()).hexdigest()
 
 def load_last_news():
     if os.path.exists(LAST_NEWS_FILE):
         try:
             with open(LAST_NEWS_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
+        except Exception as e:
+            print(f"❌ Error loading last_news: {e}")
             return None
     return None
 
@@ -39,6 +43,7 @@ def save_last_news(news_item):
     news_item['last_updated'] = datetime.now().isoformat()
     with open(LAST_NEWS_FILE, 'w', encoding='utf-8') as f:
         json.dump(news_item, f, ensure_ascii=False, indent=2)
+    print(f"💾 Last news saved to: {LAST_NEWS_FILE}")
 
 def is_same_news(news1, news2):
     if not news1 or not news2:
@@ -59,7 +64,7 @@ def is_same_news(news1, news2):
         return similarity > 0.7
     return False
 
-def setup_github_selenium():
+def setup_selenium():
     options = Options()
     options.add_argument('--headless=new')
     options.add_argument('--no-sandbox')
@@ -69,49 +74,43 @@ def setup_github_selenium():
     
     try:
         service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-        return driver
+        return webdriver.Chrome(service=service, options=options)
     except Exception as e:
         print(f"❌ Chrome error: {e}")
         try:
             options.binary_location = '/usr/bin/google-chrome'
-            driver = webdriver.Chrome(options=options)
-            return driver
-        except Exception as e2:
-            print(f"❌ Fallback also failed: {e2}")
+            return webdriver.Chrome(options=options)
+        except:
             return None
 
-def parse_forbes_ai_github():
-    print("🚀 Starting GitHub parser...")
+def parse_forbes_ai():
+    print("🚀 Starting parser...")
     
     if not SELENIUM_AVAILABLE:
-        print("❌ Selenium not available")
         return []
     
     last_news = load_last_news()
     if last_news:
         print(f"📖 Last known: {last_news['title'][:60]}...")
     else:
-        print("📖 No previous news found")
+        print("📖 No previous news")
     
     driver = None
     try:
-        driver = setup_github_selenium()
+        driver = setup_selenium()
         if not driver:
-            print("❌ Failed to initialize Chrome")
             return []
         
         print("📄 Loading Forbes AI...")
         driver.get("https://www.forbes.com/ai/")
-        print("⏳ Waiting for content...")
-        time.sleep(12)
+        time.sleep(10)
         
         articles = []
         found_known_news = False
         
         print("🔍 Finding news...")
         time_elements = driver.find_elements(By.TAG_NAME, "time")
-        print(f"📅 Time elements found: {len(time_elements)}")
+        print(f"📅 Found: {len(time_elements)} time elements")
         
         for time_elem in time_elements:
             if found_known_news:
@@ -138,26 +137,24 @@ def parse_forbes_ai_github():
                         }
                         
                         if last_news and is_same_news(current_article, last_news):
-                            print(f"🛑 Reached known news: {title[:60]}...")
+                            print(f"🛑 Reached known news")
                             found_known_news = True
                             break
                         
                         articles.append(current_article)
-                        print(f"✅ News {len(articles)}: {date_text} - {title[:50]}...")
+                        print(f"✅ {len(articles)}: {date_text} - {title[:50]}...")
                         
-            except Exception as e:
+            except Exception:
                 continue
         
         if articles:
             save_last_news(articles[0])
-            print(f"💾 New last news: {articles[0]['title'][:60]}...")
-        else:
-            print("ℹ️ No articles found or all articles are known")
+            print(f"💾 New last news saved")
         
         return articles
         
     except Exception as e:
-        print(f"❌ Parser error: {e}")
+        print(f"❌ Error: {e}")
         return []
     finally:
         if driver:
@@ -180,25 +177,30 @@ def save_results(articles):
             f.write(f"   LINK: {article['link']}\n")
             f.write("-" * 50 + "\n")
     
+    # Сохраняем количество новостей
+    with open(NEWS_COUNT_FILE, 'w') as f:
+        f.write(str(len(articles)))
+    
+    print(f"💾 Results saved to: {filename}")
+    print(f"💾 News count saved to: {NEWS_COUNT_FILE}")
+    
     return filename
 
 def main():
     print("=" * 60)
-    print("🎯 FORBES AI - GITHUB TEST")
+    print("🎯 FORBES AI - GITHUB PARSER")
     print("=" * 60)
     
-    articles = parse_forbes_ai_github()
+    articles = parse_forbes_ai()
     
     if articles:
-        print(f"\n✅ SUCCESS! New articles: {len(articles)}")
+        print(f"\n✅ SUCCESS! Found: {len(articles)} new articles")
         filename = save_results(articles)
-        print(f"💾 Saved: {filename}")
-        
-        if os.getenv('GITHUB_ACTIONS'):
-            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                f.write(f"NEWS_COUNT={len(articles)}\n")
+        print(f"💾 All files saved successfully")
     else:
         print("📭 No new news found")
+        with open(NEWS_COUNT_FILE, 'w') as f:
+            f.write("0")
 
 if __name__ == "__main__":
     ensure_dirs()
