@@ -7,15 +7,18 @@ from datetime import datetime
 try:
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
+    from webdriver_manager.chrome import ChromeDriverManager
     SELENIUM_AVAILABLE = True
 except ImportError:
     SELENIUM_AVAILABLE = False
 
 LAST_NEWS_FILE = 'last_news.json'
+RESULTS_DIR = 'results'
 
 def ensure_dirs():
-    os.makedirs('results', exist_ok=True)
+    os.makedirs(RESULTS_DIR, exist_ok=True)
 
 def generate_fingerprint(title, url):
     content = f"{title}|{url}"
@@ -64,11 +67,20 @@ def setup_github_selenium():
     options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36')
     
     try:
-        driver = webdriver.Chrome(options=options)
+        # Используем webdriver-manager для автоматической установки ChromeDriver
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
         return driver
     except Exception as e:
         print(f"❌ Chrome error: {e}")
-        return None
+        # Fallback - попробуем системный Chrome
+        try:
+            options.binary_location = '/usr/bin/google-chrome'
+            driver = webdriver.Chrome(options=options)
+            return driver
+        except Exception as e2:
+            print(f"❌ Fallback also failed: {e2}")
+            return None
 
 def parse_forbes_ai_github():
     print("🚀 Starting GitHub parser...")
@@ -87,18 +99,27 @@ def parse_forbes_ai_github():
     try:
         driver = setup_github_selenium()
         if not driver:
+            print("❌ Failed to initialize Chrome")
             return []
         
         print("📄 Loading Forbes AI...")
         driver.get("https://www.forbes.com/ai/")
-        time.sleep(10)
+        print("⏳ Waiting for content...")
+        time.sleep(12)  # Увеличиваем время ожидания
         
         articles = []
         found_known_news = False
         
         print("🔍 Finding news...")
+        # Пробуем разные способы поиска элементов
         time_elements = driver.find_elements(By.TAG_NAME, "time")
         print(f"📅 Time elements found: {len(time_elements)}")
+        
+        if not time_elements:
+            print("🔍 Trying alternative search...")
+            # Альтернативный поиск
+            links = driver.find_elements(By.TAG_NAME, "a")
+            print(f"🔗 Total links found: {len(links)}")
         
         for time_elem in time_elements:
             if found_known_news:
@@ -107,33 +128,40 @@ def parse_forbes_ai_github():
                 date_text = time_elem.text.strip()
                 if not date_text:
                     continue
-                container = time_elem.find_element(By.XPATH, "./ancestor::div[position() < 6]")
-                title_elem = container.find_element(By.CSS_SELECTOR, "h3 a")
-                title = title_elem.text.strip()
-                href = title_elem.get_attribute('href')
                 
-                if title and href and len(title) > 10:
-                    current_article = {
-                        'date': date_text,
-                        'title': title,
-                        'link': href,
-                        'fingerprint': generate_fingerprint(title, href)
-                    }
+                # Ищем заголовок рядом
+                container = time_elem.find_element(By.XPATH, "./ancestor::div[position() < 10]")
+                title_elems = container.find_elements(By.CSS_SELECTOR, "h2 a, h3 a, h4 a")
+                
+                if title_elems:
+                    title_elem = title_elems[0]
+                    title = title_elem.text.strip()
+                    href = title_elem.get_attribute('href')
                     
-                    if last_news and is_same_news(current_article, last_news):
-                        print(f"🛑 Reached known news: {title[:60]}...")
-                        found_known_news = True
-                        break
-                    
-                    articles.append(current_article)
-                    print(f"✅ News {len(articles)}: {date_text} - {title[:50]}...")
-                    
-            except Exception:
+                    if title and href and len(title) > 10:
+                        current_article = {
+                            'date': date_text,
+                            'title': title,
+                            'link': href,
+                            'fingerprint': generate_fingerprint(title, href)
+                        }
+                        
+                        if last_news and is_same_news(current_article, last_news):
+                            print(f"🛑 Reached known news: {title[:60]}...")
+                            found_known_news = True
+                            break
+                        
+                        articles.append(current_article)
+                        print(f"✅ News {len(articles)}: {date_text} - {title[:50]}...")
+                        
+            except Exception as e:
                 continue
         
         if articles:
             save_last_news(articles[0])
             print(f"💾 New last news: {articles[0]['title'][:60]}...")
+        else:
+            print("ℹ️ No articles found or all articles are known")
         
         return articles
         
@@ -147,7 +175,7 @@ def parse_forbes_ai_github():
 def save_results(articles):
     ensure_dirs()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f'results/github_{timestamp}.txt'
+    filename = os.path.join(RESULTS_DIR, f"github_{timestamp}.txt")
     
     with open(filename, 'w', encoding='utf-8') as f:
         f.write("FORBES AI - GITHUB PARSER\n")
