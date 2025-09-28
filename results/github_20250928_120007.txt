@@ -1,0 +1,85 @@
+FORBES AI - GITHUB PARSER
+==================================================
+Time: 2025-09-28 12:00:07
+New articles: 20
+
+1. DATE: 2 hours ago
+   TITLE: The Economic Singularity And The Five As
+   LINK: https://www.forbes.com/sites/calumchace/2025/09/28/the-economic-singularity-and-the-five-as/?ss=ai
+--------------------------------------------------
+2. DATE: 4 hours ago
+   TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
+   LINK: https://www.forbes.com/sites/saharhashmi/2025/09/28/why-ai-evals-and-kpis-are-the-new-standard-for-scaling-healthcare-ai/?ss=ai
+--------------------------------------------------
+3. DATE: 5 hours ago
+   TITLE: Harvard’s BKC Explores Whether Human Intelligence And AI Computational Intelligence Are Actually The Same
+   LINK: https://www.forbes.com/sites/lanceeliot/2025/09/28/harvards-bkc-explores-whether-human-intelligence-and-ai-computational-intelligence-are-actually-the-same/?ss=ai
+--------------------------------------------------
+4. DATE: 6 hours ago
+   TITLE: The 4H Blueprint: Space, ProSocial AI And Planetary Health
+   LINK: https://www.forbes.com/sites/corneliawalther/2025/09/28/the-4h-blueprint-space-prosocial-ai-and-planetary-health/?ss=ai
+--------------------------------------------------
+5. DATE: 15 hours ago
+   TITLE: Google Photos May Get Nano Banana AI , Claims New Report
+   LINK: https://www.forbes.com/sites/paulmonckton/2025/09/27/google-photos-may-get-nanobanana-ai--claims-new-report/?ss=ai
+--------------------------------------------------
+6. DATE: 22 hours ago
+   TITLE: What Does AI-First Leadership Mean For Today’s Business Leaders?
+   LINK: https://www.forbes.com/sites/kathleenwalch/2025/09/27/what-does-ai-first-leadership-mean-for-todays-business-leaders/?ss=ai
+--------------------------------------------------
+7. DATE: Sep 26, 2025
+   TITLE: The Tractors Drive Themselves: Innovation In Fargo
+   LINK: https://www.forbes.com/sites/johnwerner/2025/09/26/the-tractors-drive-themselves-innovation-in-fargo-nd/?ss=ai
+--------------------------------------------------
+8. DATE: Sep 26, 2025
+   TITLE: Spotify Tightens AI Policy And Trims Catalog
+   LINK: https://www.forbes.com/sites/billrosenblatt/2025/09/26/spotify-tightens-ai-policy-and-trims-catalog/?ss=ai
+--------------------------------------------------
+9. DATE: Sep 26, 2025
+   TITLE: Databricks Offers New Agent Ecosystem With OpenAI Models
+   LINK: https://www.forbes.com/sites/johnwerner/2025/09/26/databricks-offers-new-agent-ecosystem-with-openai-models/?ss=ai
+--------------------------------------------------
+10. DATE: Sep 26, 2025
+   TITLE: Capital Spending On AI May Be Vastly Outpacing Potential Revenue
+   LINK: https://www.forbes.com/sites/the-prototype/2025/09/26/capital-spending-on-ai-may-be-vastly-outpacing-demand/?ss=ai
+--------------------------------------------------
+11. DATE: Sep 26, 2025
+   TITLE: The 7 Cyber Security Trends Of 2026 That Everyone Must Be Ready For
+   LINK: https://www.forbes.com/sites/bernardmarr/2025/09/26/the-7-biggest-cyber-security-trends-of-2026-that-everyone-must-be-ready-for/?ss=ai
+--------------------------------------------------
+12. DATE: Sep 26, 2025
+   TITLE: How Agentic AI Can Safely Fill Critical Mental Health Care Gaps
+   LINK: https://www.forbes.com/sites/saharhashmi/2025/09/26/the-future-of-mental-health-care-how-agentic-ai-could-fill-critical-gaps/?ss=ai
+--------------------------------------------------
+13. DATE: Sep 25, 2025
+   TITLE: Why AEO May Be The Most Dangerous Acronym In AI
+   LINK: https://www.forbes.com/sites/jasonsnyder/2025/09/25/why-aeo-may-be-the-most-dangerous-acronym-in-ai/?ss=ai
+--------------------------------------------------
+14. DATE: Sep 25, 2025
+   TITLE: AI Models Acted Like Voters In 2024 And The Findings Are Startling
+   LINK: https://www.forbes.com/sites/ronschmelzer/2025/09/25/ai-models-acted-like-voters-in-2024-and-the-findings-are-startling/?ss=ai
+--------------------------------------------------
+15. DATE: Sep 24, 2025
+   TITLE: Zelenskyy’s UN Warning: Regulate AI In Weapons Before It’s Too Late
+   LINK: https://www.forbes.com/sites/ronschmelzer/2025/09/24/zelenskyys-un-warning-regulate-ai-in-weapons-before-its-too-late/?ss=ai
+--------------------------------------------------
+16. DATE: Sep 24, 2025
+   TITLE: Beyond The Hype: AI’s Real Impact Is In Quiet Changes All Around Us
+   LINK: https://www.forbes.com/sites/victordey/2025/09/24/beyond-the-hypeais-real-impact-is-in-quiet-changes-all-around-us/?ss=ai
+--------------------------------------------------
+17. DATE: Sep 24, 2025
+   TITLE: AI, Democracy, And Jobs
+   LINK: https://www.forbes.com/sites/johnwerner/2025/09/24/ai-democracy-and-jobs/?ss=ai
+--------------------------------------------------
+18. DATE: Sep 24, 2025
+   TITLE: No Pixel 10 Needed: Google Photos’ Conversational Editing Comes To All Android Devices
+   LINK: https://www.forbes.com/sites/paulmonckton/2025/09/24/no-pixel-10-needed-google-photos-conversational-editing-comes-to-all-android-devices/?ss=ai
+--------------------------------------------------
+19. DATE: Sep 24, 2025
+   TITLE: Getting Started With Microsoft Copilot: A Guide To Driving ROI
+   LINK: https://www.forbes.com/sites/larryenglish/2025/09/24/getting-started-with-microsoft-copilot-a-guide-to-driving-roi/?ss=ai
+--------------------------------------------------
+20. DATE: Sep 24, 2025
+   TITLE: Smart Glasses And Our Post-Privacy, Persistently Connected World
+   LINK: https://www.forbes.com/sites/cortneyharding/2025/09/24/smart-glasses-and-our-post-privacy-persistently-connected-world/?ss=ai
+--------------------------------------------------
