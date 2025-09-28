@@ -2,11 +2,10 @@ import os
 import aiohttp
 import asyncio
 import json
-import re
-from datetime import datetime, timedelta, timezone
+import glob
 import logging
 import time
-from typing import List, Dict
+from datetime import datetime, timezone, timedelta
 
 # Настройка логирования
 logging.basicConfig(
@@ -21,159 +20,102 @@ YANDEX_FOLDER_ID = os.getenv('YANDEX_FOLDER_ID')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHANNEL_ID = os.getenv('TELEGRAM_CHANNEL_ID')
 
-# Круглосуточный режим - публикация каждый час
-PUBLICATION_HOURS = list(range(24))  # 0-23 часа
-
-class CompanyRotationManager:
-    """Менеджер ротации компаний для круглосуточного режима"""
+class ExistingFilesNewsManager:
+    def __init__(self, files_pattern="results/github_*.txt", sent_file="sent_news.json"):
+        self.files_pattern = files_pattern
+        self.sent_file = sent_file
+        self.sent_news = self.load_sent_news()
     
-    def __init__(self):
-        # Группировка компаний по уровню активности и времени суток
-        self.companies_night = [  # 00-06 МСК - международные компании (активны в США)
-            "OpenAI", "Anthropic", "Google", "Microsoft", "xAI", "Meta",
-            "Apple", "Amazon", "NVIDIA", "Tesla"
-        ]
-        
-        self.companies_morning = [  # 07-11 МСК - все компании
-            "OpenAI", "Google", "Microsoft", "Meta", "xAI", "Anthropic",
-            "Apple", "Amazon", "NVIDIA", "Tesla", "DeepSeek",
-            "Yandex", "Midjourney", "Stability AI", "Hugging Face"
-        ]
-        
-        self.companies_day = [  # 12-17 МСК - все компании
-            "OpenAI", "Google", "Microsoft", "Meta", "xAI", "Anthropic", 
-            "Apple", "Amazon", "NVIDIA", "Tesla", "DeepSeek",
-            "Yandex", "Midjourney", "Stability AI", "Hugging Face"
-        ]
-        
-        self.companies_evening = [  # 18-23 МСК - международные + российские
-            "OpenAI", "Google", "Microsoft", "Meta", "xAI", "Anthropic",
-            "Apple", "Amazon", "NVIDIA", "Tesla", "DeepSeek", "Yandex"
-        ]
-        
-        self.all_companies = list(set(
-            self.companies_night + self.companies_morning + 
-            self.companies_day + self.companies_evening
-        ))
-        
-        self.current_index = 0
-        self.last_rotation_date = None
-        
-    def get_company_for_hour(self, hour: int) -> str:
-        """Выбор компании для текущего часа с учетом времени суток"""
-        today = datetime.now().date()
-        
-        # Сбрасываем индекс если сменился день
-        if self.last_rotation_date != today:
-            self.current_index = 0
-            self.last_rotation_date = today
-        
-        # Выбор пула компаний в зависимости от времени суток
-        if 0 <= hour <= 6:    # Ночь (00-06 МСК)
-            companies_pool = self.companies_night
-            time_slot = "ночь"
-        elif 7 <= hour <= 11: # Утро (07-11 МСК)  
-            companies_pool = self.companies_morning
-            time_slot = "утро"
-        elif 12 <= hour <= 17: # День (12-17 МСК)
-            companies_pool = self.companies_day
-            time_slot = "день"
-        else:                 # Вечер (18-23 МСК)
-            companies_pool = self.companies_evening
-            time_slot = "вечер"
-        
-        # Циклическая ротация внутри выбранного пула
-        company = companies_pool[self.current_index % len(companies_pool)]
-        self.current_index += 1
-        
-        logger.info(f"🏢 Ротация: {hour:02d}:00 МСК ({time_slot}) -> {company}")
-        return company
+    def load_sent_news(self):
+        """Загружает отправленные новости"""
+        if os.path.exists(self.sent_file):
+            try:
+                with open(self.sent_file, 'r', encoding='utf-8') as f:
+                    return set(json.load(f))
+            except Exception as e:
+                logger.error(f"❌ Ошибка загрузки sent_news.json: {e}")
+                return set()
+        return set()
     
-    def get_company_sources(self, company: str) -> Dict[str, str]:
-        """Получение источников для конкретной компании"""
-        sources_map = {
-            "OpenAI": {
-                "x": "https://x.com/OpenAI",
-                "blog": "openai.com/blog",
-                "official": "OpenAI официальный канал"
-            },
-            "Google": {
-                "x": "https://x.com/Google", 
-                "blog": "blog.google",
-                "official": "Google AI блог"
-            },
-            "Microsoft": {
-                "x": "https://x.com/Microsoft",
-                "blog": "blogs.microsoft.com/ai",
-                "official": "Microsoft AI блог"
-            },
-            "Meta": {
-                "x": "https://x.com/Meta",
-                "blog": "ai.meta.com",
-                "official": "Meta AI блог"
-            },
-            "xAI": {
-                "x": "https://x.com/xAI",
-                "blog": "x.ai/blog",
-                "official": "xAI официальный канал"
-            },
-            "Anthropic": {
-                "x": "https://x.com/AnthropicAI", 
-                "blog": "anthropic.com/news",
-                "official": "Anthropic блог"
-            },
-            "Apple": {
-                "x": "https://x.com/Apple",
-                "blog": "developer.apple.com/machine-learning",
-                "official": "Apple Machine Learning"
-            },
-            "Amazon": {
-                "x": "https://x.com/Amazon",
-                "blog": "aws.amazon.com/blogs/machine-learning",
-                "official": "AWS AI блог"
-            },
-            "NVIDIA": {
-                "x": "https://x.com/NVIDIA", 
-                "blog": "blogs.nvidia.com",
-                "official": "NVIDIA AI блог"
-            },
-            "Tesla": {
-                "x": "https://x.com/Tesla",
-                "blog": "tesla.com/AI",
-                "official": "Tesla AI"
-            },
-            "DeepSeek": {
-                "x": "https://x.com/DeepSeekAI",
-                "blog": "deepseek.com",
-                "official": "DeepSeek официальный"
-            },
-            "Yandex": {
-                "x": "https://x.com/Yandex",
-                "blog": "yandex.ru/blog/company/ai",
-                "official": "Yandex AI блог"
-            },
-            "Midjourney": {
-                "x": "https://x.com/Midjourney",
-                "blog": "midjourney.com/news",
-                "official": "Midjourney официальный"
-            },
-            "Stability AI": {
-                "x": "https://x.com/StabilityAI", 
-                "blog": "stability.ai/news",
-                "official": "Stability AI блог"
-            },
-            "Hugging Face": {
-                "x": "https://x.com/HuggingFace",
-                "blog": "huggingface.co/blog",
-                "official": "Hugging Face блог"
-            }
-        }
+    def save_sent_news(self):
+        """Сохраняет отправленные новости"""
+        try:
+            with open(self.sent_file, 'w', encoding='utf-8') as f:
+                json.dump(list(self.sent_news), f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"❌ Ошибка сохранения sent_news.json: {e}")
+    
+    def get_oldest_unsent_news(self):
+        """Находит самую старую непрочитанную новость из всех файлов"""
+        # Получаем все файлы по паттерну
+        news_files = glob.glob(self.files_pattern)
+        if not news_files:
+            logger.info("📭 Файлы с новостями не найдены")
+            return None
         
-        return sources_map.get(company, {
-            "x": f"https://x.com/search?q={company} AI",
-            "blog": f"Поиск новостей {company}",
-            "official": f"{company} официальные источники"
-        })
+        # Сортируем файлы по дате создания (самый старый первый)
+        news_files.sort(key=os.path.getctime)
+        logger.info(f"📁 Найдено файлов: {len(news_files)}")
+        
+        for filepath in news_files:
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    news_lines = [line.strip() for line in f if line.strip()]
+                
+                logger.info(f"📖 Чтение файла {os.path.basename(filepath)}: {len(news_lines)} новостей")
+                
+                for news_line in news_lines:
+                    # Создаем уникальный идентификатор новости
+                    news_hash = hash(news_line)
+                    if news_hash not in self.sent_news:
+                        logger.info(f"🎯 Найдена новая новость: {news_line[:50]}...")
+                        return news_line, news_hash, filepath
+                        
+            except Exception as e:
+                logger.error(f"❌ Ошибка чтения файла {filepath}: {e}")
+                continue
+        
+        logger.info("✅ Все новости уже отправлены")
+        return None
+    
+    def mark_news_sent_and_cleanup(self, news_hash, news_line, filepath):
+        """Помечает новость как отправленную и чистит файлы"""
+        # Помечаем новость как отправленную
+        self.sent_news.add(news_hash)
+        self.save_sent_news()
+        
+        # Удаляем отправленную новость из файла
+        self.remove_news_from_file(filepath, news_line)
+        
+        # Удаляем пустой файл если нужно
+        self.remove_empty_file(filepath)
+    
+    def remove_news_from_file(self, filepath, news_line_to_remove):
+        """Удаляет конкретную новость из файла"""
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                news_lines = [line.strip() for line in f if line.strip()]
+            
+            # Убираем отправленную новость
+            updated_news = [line for line in news_lines if line != news_line_to_remove]
+            
+            # Перезаписываем файл
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(updated_news))
+                
+            logger.info(f"🗑️ Удалена отправленная новость из {os.path.basename(filepath)}")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка удаления новости из файла: {e}")
+    
+    def remove_empty_file(self, filepath):
+        """Удаляет файл если он пустой"""
+        try:
+            if os.path.exists(filepath) and os.path.getsize(filepath) == 0:
+                os.remove(filepath)
+                logger.info(f"🗑️ Удален пустой файл {os.path.basename(filepath)}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка удаления файла: {e}")
 
 class AsyncYandexGPTMonitor:
     def __init__(self):
@@ -184,20 +126,7 @@ class AsyncYandexGPTMonitor:
         }
         self.session = None
         self.token_usage = 0
-        self.company_manager = CompanyRotationManager()
         
-        # Доверенные домены для проверки достоверности
-        self.trusted_domains = [
-            'blog.google', 'blogs.microsoft.com', 'openai.com/blog', 
-            'ai.meta.com', 'x.ai', 'anthropic.com', 'developer.apple.com',
-            'aws.amazon.com', 'blogs.nvidia.com', 'tesla.com',
-            'yandex.ru/blog', 'deepseek.com', 'midjourney.com',
-            'stability.ai', 'huggingface.co',
-            'techcrunch.com', 'theverge.com', 'wired.com', 'arstechnica.com',
-            'reuters.com', 'bloomberg.com', 'cnbc.com', 'venturebeat.com',
-            'arxiv.org', 'nature.com', 'science.org'
-        ]
-
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
         return self
@@ -220,11 +149,7 @@ class AsyncYandexGPTMonitor:
                     {
                         "role": "system",
                         "text": """Ты - профессиональный редактор новостного канала об ИИ. 
-                        Соблюдай строгие критерии достоверности:
-                        - Приоритет официальным источникам и авторитетным изданиям
-                        - Избегай слухов, утечек и неподтвержденной информации
-                        - Конкретные факты важнее общих фраз
-                        - Если нет достоверных новостей - лучше сообщи об их отсутствии"""
+                        Создавай качественные краткие пересказы новостей."""
                     },
                     {
                         "role": "user", 
@@ -269,63 +194,6 @@ class AsyncYandexGPTMonitor:
             logger.error(f"❌ Ошибка: {e}")
             return None
 
-    async def search_ai_news(self, hour: int):
-        """Поиск новостей с ротацией компаний"""
-        target_company = self.company_manager.get_company_for_hour(hour)
-        company_sources = self.company_manager.get_company_sources(target_company)
-        
-        # Контекст времени суток для промпта
-        time_contexts = {
-            **{h: "ночные" for h in range(0, 7)},
-            **{h: "утренние" for h in range(7, 12)},
-            **{h: "дневные" for h in range(12, 18)},
-            **{h: "вечерние" for h in range(18, 24)}
-        }
-        
-        context = time_contexts.get(hour, "текущие")
-        
-        prompt = f"""
-        Найди САМУЮ интересную и ДОСТОВЕРНУЮ новость за последние 24 часа от компании {target_company}.
-        Сейчас {hour:02d}:00 МСК ({context} часы).
-        
-        КОНКРЕТНЫЕ ИСТОЧНИКИ ДЛЯ {target_company.upper()}:
-        - Официальный X (Twitter): {company_sources['x']}
-        - Официальный блог: {company_sources['blog']}
-        - Другие официальные каналы: {company_sources['official']}
-        
-        УЧТИ ВРЕМЯ СУТОК:
-        - {hour:02d}:00 МСК соответствует разному времени в других часовых поясах
-        - Новости могут появляться из США, Европы или Азии
-        - Проверяй актуальность с учетом временных зон
-        
-        КРИТЕРИИ ДОСТОВЕРНОСТИ:
-        ✅ **ВЫСОКИЙ ПРИОРИТЕТ:** Официальные анонсы, блог компании, пресс-релизы
-        ✅ **ДОПУСТИМО:** Авторитетные издания (если цитируют официальные источники)
-        ❌ **ИЗБЕГАТЬ:** Слухи, неподтвержденные утечки, соцсети (кроме официальных)
-        
-        ЕСЛИ НЕТ НОВОСТЕЙ ОТ {target_company.upper()}:
-        - Можно найти новость о значимом партнерстве с участием {target_company}
-        - Или важную новость от другой крупной ИИ-компании
-        - Но в приоритете именно {target_company}
-        
-        Формат ответа (соблюдай точно!):
-        
-        🚀 {target_company}: [Конкретный заголовок с деталями]\n\n
-        
-        📝 [3-4 предложения с КОНКРЕТНЫМИ фактами о {target_company}]\n\n
-        
-        💡 [Практическое значение: 1-2 предложения]\n\n
-        
-        🔗 [Ссылка на ПРЯМОЙ ИСТОЧНИК от {target_company}]\n\n
-        
-        🔖 #{target_company.replace(' ', '')} #ИИ #НовостиИИ [еще 1-2 релевантных хештега]
-        
-        ВАЖНО: Приоритет достоверности над сенсационностью!
-        """
-        
-        news_content = await self.yandex_gpt_call(prompt)
-        return news_content, target_company
-
 async def send_to_telegram_async(message, session):
     """Асинхронная отправка в Telegram"""
     try:
@@ -341,116 +209,93 @@ async def send_to_telegram_async(message, session):
             if response.status == 200:
                 return True
             else:
+                error_text = await response.text()
+                logger.error(f"❌ Ошибка Telegram API: {response.status} - {error_text}")
                 return False
-    except Exception:
-        return False
-
-async def send_no_news_message(hour, session, company=None):
-    """Отправка сообщения об отсутствии новостей"""
-    if company:
-        message = f"""
-🚀 AI News Monitor • {hour:02d}:00 МСК
-
-📝 За последние 24 часа не найдено значимых новостей от {company}.
-
-💡 Следующий запрос в {(hour + 1) % 24:02d}:00 МСК будет о другой компании.
-
-🔖 #{company.replace(' ', '')} #ИИ #Новости #Мониторинг
-        """
-    else:
-        message = f"""
-🚀 AI News Monitor • {hour:02d}:00 МСК
-
-📝 За последние 2 часа не найдено значимых новостей.
-
-💡 Система продолжает круглосуточный мониторинг.
-
-🔖 #ИИ #Новости #Мониторинг
-        """
-    
-    return await send_to_telegram_async(message, session)
-
-async def publish_hourly_news(hour):
-    """Публикация новости с ротацией компаний"""
-    start_time = time.time()
-    
-    try:
-        async with AsyncYandexGPTMonitor() as monitor:
-            async with aiohttp.ClientSession() as telegram_session:
-                news_content, target_company = await monitor.search_ai_news(hour)
-                
-                if news_content:
-                    # Проверяем наличие ключевых фраз об отсутствии новостей
-                    no_news_phrases = [
-                        "нет новостей", "нет достоверных", "не найдено новостей",
-                        "новостей нет", "пока нет новостей", "no news", "nothing found"
-                    ]
-                    
-                    if any(phrase in news_content.lower() for phrase in no_news_phrases):
-                        logger.info(f"ℹ️ {hour:02d}:00 - Нет новостей от {target_company}")
-                        await send_no_news_message(hour, telegram_session, target_company)
-                        return True
-                    
-                    # Очищаем и форматируем текст
-                    lines = news_content.split('\n')
-                    cleaned_content = []
-                    start_adding = False
-                    
-                    for line in lines:
-                        line = line.strip()
-                        if not line:
-                            continue
-                            
-                        if line.startswith('🚀'):
-                            start_adding = True
-                        
-                        if start_adding:
-                            cleaned_content.append(line)
-                            if line.startswith('🔖'):
-                                break
-                    
-                    telegram_message = '\n'.join(cleaned_content)
-                    
-                    # Добавляем пометку о времени и компании
-                    time_note = f"\n\n<em>🕐 {hour:02d}:00 МСК • 🏢 {target_company}</em>"
-                    telegram_message += time_note
-                    
-                    if await send_to_telegram_async(telegram_message, telegram_session):
-                        execution_time = time.time() - start_time
-                        logger.info(f"✅ {hour:02d}:00 - Опубликовано о {target_company} ({execution_time:.1f}сек)")
-                        return True
-                    else:
-                        logger.error(f"❌ {hour:02d}:00 - Ошибка отправки в Telegram")
-                        return False
-                else:
-                    logger.error(f"❌ {hour:02d}:00 - Не удалось получить новость о {target_company}")
-                    await send_no_news_message(hour, telegram_session, target_company)
-                    return False
-                    
     except Exception as e:
-        logger.error(f"❌ {hour:02d}:00 - Критическая ошибка: {e}")
+        logger.error(f"❌ Ошибка отправки в Telegram: {e}")
         return False
 
+async def process_news_for_telegram():
+    """Основная функция обработки новостей - ТОЛЬКО если есть новости"""
+    news_manager = ExistingFilesNewsManager("results/github_*.txt")
+    
+    # Получаем самую старую непрочитанную новость
+    news_data = news_manager.get_oldest_unsent_news()
+    
+    if not news_data:
+        logger.info("ℹ️ Нет новых новостей - пропускаем отправку")
+        return True
+    
+    news_line, news_hash, filepath = news_data
+    
+    # Парсим новость (формат: "заголовок | URL")
+    if '|' in news_line:
+        title, url = [part.strip() for part in news_line.split('|', 1)]
+    else:
+        title, url = news_line, ""
+
+    # Создаем промпт для YandexGPT с явным указанием форматирования
+    prompt = f"""
+Переведи заголовок и суммируй новость (или сделай краткий пересказ) - {url}
+
+ВАЖНО: СОБЛЮДАЙ ФОРМАТИРОВАНИЕ С ПУСТЫМИ СТРОКАМИ!
+
+Размести ссылку под текстом новости и сгенерируй релевантные хештеги.
+
+Формат ответа (СОБЛЮДАЙ ТОЧНО!):
+
+🚀 [Переведенный заголовок]
+
+📝 [Краткий пересказ 2-3 предложения]
+
+💡 [Практическое значение или ключевой вывод]
+
+🔗 {url}
+
+🔖 [3-5 релевантных хештегов]
+
+ОБЯЗАТЕЛЬНО оставляй пустую строку между блоками!
+"""
+    
+    # Отправляем в YandexGPT
+    async with AsyncYandexGPTMonitor() as monitor:
+        summarized_news = await monitor.yandex_gpt_call(prompt)
+    
+    if summarized_news:
+        # Отправляем в Telegram
+        async with aiohttp.ClientSession() as session:
+            success = await send_to_telegram_async(summarized_news, session)
+            
+            if success:
+                # Помечаем как отправленную и чистим файлы
+                news_manager.mark_news_sent_and_cleanup(news_hash, news_line, filepath)
+                logger.info("✅ Новость успешно отправлена и файлы очищены")
+                return True
+            else:
+                logger.error("❌ Ошибка отправки в Telegram")
+                return False
+    else:
+        logger.error("❌ Не удалось обработать новость через YandexGPT")
+        return False
+        
 async def main():
     """Основная функция"""
-    # Текущее время по МСК
     msk_time = datetime.now(timezone(timedelta(hours=3)))
     current_hour = msk_time.hour
     
     logger.info("=" * 60)
-    logger.info("🚀 AI News Monitor - Круглосуточный режим 24/7")
+    logger.info("🚀 AI News Monitor - Обработка новостей из файлов")
     logger.info(f"⏰ Текущее время: {msk_time.strftime('%H:%M')} МСК")
-    logger.info(f"📅 Режим: публикация каждый час")
     logger.info("=" * 60)
     
-    # Всегда публикуем (каждый час)
-    logger.info(f"🎯 Публикуем новость для {current_hour:02d}:00")
-    success = await publish_hourly_news(current_hour)
+    # Запускаем обработку
+    success = await process_news_for_telegram()
     
     if success:
-        logger.info(f"🎉 Успешно завершено для {current_hour:02d}:00")
+        logger.info("🎉 Скрипт завершил работу")
     else:
-        logger.warning(f"⚠️ Завершено с ошибками для {current_hour:02d}:00")
+        logger.warning("⚠️ Скрипт завершил работу с ошибками")
 
 if __name__ == "__main__":
     # Проверка переменных
