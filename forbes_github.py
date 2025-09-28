@@ -206,13 +206,28 @@ def main():
     
     if articles:
         print(f"\n✅ SUCCESS! Found: {len(articles)} new articles")
+        
+        # ДЛЯ ОТЛАДКИ - принудительно сохраняем
+        print("🔧 DEBUG: Saving articles...")
+        for i, article in enumerate(articles, 1):
+            print(f"   {i}. {article['title'][:50]}...")
+        
         filename = save_results(articles)
         print(f"💾 All files saved successfully")
+        
+        # Проверяем что файл создался
+        import os
+        if os.path.exists(filename):
+            print(f"📁 File created: {filename}")
+            with open(filename, 'r', encoding='utf-8') as f:
+                content = f.read()
+                print(f"📄 File content length: {len(content)} chars")
+        else:
+            print(f"❌ File NOT created: {filename}")
+            
     else:
         print("📭 No new news found")
         with open(NEWS_COUNT_FILE, 'w') as f:
             f.write("0")
-
-if __name__ == "__main__":
     ensure_dirs()
     main()
