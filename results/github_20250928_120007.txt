@@ -1,7 +1,7 @@
 FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-28 12:00:07
-New articles: 14
+New articles: 13
 
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
@@ -54,8 +54,4 @@ New articles: 14
 14. DATE: Sep 25, 2025
    TITLE: AI Models Acted Like Voters In 2024 And The Findings Are Startling
    LINK: https://www.forbes.com/sites/ronschmelzer/2025/09/25/ai-models-acted-like-voters-in-2024-and-the-findings-are-startling/?ss=ai
---------------------------------------------------
-15. DATE: Sep 24, 2025
-   TITLE: Zelenskyy’s UN Warning: Regulate AI In Weapons Before It’s Too Late
-   LINK: https://www.forbes.com/sites/ronschmelzer/2025/09/24/zelenskyys-un-warning-regulate-ai-in-weapons-before-its-too-late/?ss=ai
 --------------------------------------------------
