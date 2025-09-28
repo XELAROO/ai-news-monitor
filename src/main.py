@@ -45,6 +45,47 @@ class ExistingFilesNewsManager:
         except Exception as e:
             logger.error(f"❌ Ошибка сохранения sent_news.json: {e}")
     
+    def parse_news_file(self, filepath):
+        """Парсит файл в любом формате (Forbes или простом)"""
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Если это формат Forbes Parser
+            if 'FORBES AI - GITHUB PARSER' in content:
+                return self.parse_forbes_format(content)
+            else:
+                # Простой формат (одна новость на строку)
+                return [line.strip() for line in content.split('\n') if line.strip() and '|' in line]
+                
+        except Exception as e:
+            logger.error(f"❌ Ошибка чтения файла {filepath}: {e}")
+            return []
+    
+    def parse_forbes_format(self, content):
+        """Парсит специфический формат Forbes"""
+        news_lines = []
+        blocks = content.split('--------------------------------------------------')
+        
+        for block in blocks:
+            if 'TITLE:' in block and 'LINK:' in block:
+                lines = block.strip().split('\n')
+                title = None
+                link = None
+                
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('TITLE:'):
+                        title = line.replace('TITLE:', '').strip()
+                    elif line.startswith('LINK:'):
+                        link = line.replace('LINK:', '').strip()
+                
+                if title and link:
+                    news_lines.append(f"{title} | {link}")
+        
+        logger.info(f"📰 Распаршено {len(news_lines)} новостей из Forbes формата")
+        return news_lines
+    
     def get_oldest_unsent_news(self):
         """Находит самую старую непрочитанную новость из всех файлов"""
         # Получаем все файлы по паттерну
@@ -58,23 +99,18 @@ class ExistingFilesNewsManager:
         logger.info(f"📁 Найдено файлов: {len(news_files)}")
         
         for filepath in news_files:
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    news_lines = [line.strip() for line in f if line.strip()]
-                
-                logger.info(f"📖 Чтение файла {os.path.basename(filepath)}: {len(news_lines)} новостей")
-                
-                for news_line in news_lines:
-                    # Создаем уникальный идентификатор новости
-                    news_hash = hash(news_line)
-                    if news_hash not in self.sent_news:
-                        logger.info(f"🎯 Найдена новая новость: {news_line[:50]}...")
-                        return news_line, news_hash, filepath
+            # Используем новый парсер вместо простого чтения
+            news_lines = self.parse_news_file(filepath)
+            
+            logger.info(f"📖 Чтение файла {os.path.basename(filepath)}: {len(news_lines)} новостей")
+            
+            for news_line in news_lines:
+                # Создаем уникальный идентификатор новости
+                news_hash = hash(news_line)
+                if news_hash not in self.sent_news:
+                    logger.info(f"🎯 Найдена новая новость: {news_line[:50]}...")
+                    return news_line, news_hash, filepath
                         
-            except Exception as e:
-                logger.error(f"❌ Ошибка чтения файла {filepath}: {e}")
-                continue
-        
         logger.info("✅ Все новости уже отправлены")
         return None
     
@@ -93,20 +129,46 @@ class ExistingFilesNewsManager:
     def remove_news_from_file(self, filepath, news_line_to_remove):
         """Удаляет конкретную новость из файла"""
         try:
+            # Читаем файл с помощью парсера для сохранения формата
             with open(filepath, 'r', encoding='utf-8') as f:
-                news_lines = [line.strip() for line in f if line.strip()]
+                original_content = f.read()
             
-            # Убираем отправленную новость
-            updated_news = [line for line in news_lines if line != news_line_to_remove]
+            # Если это Forbes формат, удаляем соответствующий блок
+            if 'FORBES AI - GITHUB PARSER' in original_content:
+                updated_content = self.remove_forbes_news_block(original_content, news_line_to_remove)
+            else:
+                # Простой формат - удаляем строку
+                lines = original_content.split('\n')
+                updated_lines = [line for line in lines if line.strip() != news_line_to_remove]
+                updated_content = '\n'.join(updated_lines)
             
             # Перезаписываем файл
             with open(filepath, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(updated_news))
+                f.write(updated_content)
                 
             logger.info(f"🗑️ Удалена отправленная новость из {os.path.basename(filepath)}")
             
         except Exception as e:
             logger.error(f"❌ Ошибка удаления новости из файла: {e}")
+    
+    def remove_forbes_news_block(self, content, news_line_to_remove):
+        """Удаляет блок новости из Forbes формата"""
+        if '|' not in news_line_to_remove:
+            return content
+            
+        # Извлекаем заголовок из news_line (формат: "заголовок | url")
+        title_to_remove = news_line_to_remove.split('|')[0].strip()
+        
+        blocks = content.split('--------------------------------------------------')
+        updated_blocks = []
+        
+        for block in blocks:
+            if 'TITLE:' in block and title_to_remove in block:
+                # Пропускаем блок с удаляемой новостью
+                continue
+            updated_blocks.append(block)
+        
+        return '--------------------------------------------------'.join(updated_blocks)
     
     def remove_empty_file(self, filepath):
         """Удаляет файл если он пустой"""
@@ -238,16 +300,16 @@ async def process_news_for_telegram():
     prompt = f"""
 ЗАДАЧА: Перевести на русский и создать краткий пересказ новости: {url}
 
-ТРЕБОВАНИЯ К ФОРМАТУ:
-- Заголовок: краткий, привлекающий внимание
-- Текст: 3-5 предложения, только ключевые факты
-- Вывод: практическая польза/значение
-- Ссылка: оригинальный URL без анкора
-- Хештеги: 3-5 релевантных тегов на русском
-- Пустая строка: разделитель болков
+ТРЕБОВАНИЯ К ФОРМАТУ БЛОКОВ:
+1. Заголовок: краткий, привлекающий внимание
+2. Текст: 3-5 предложения, только ключевые факты
+3. Вывод: практическая польза/значение
+4. Ссылка: оригинальный URL без анкора
+5. Хештеги: 3-5 релевантных тегов на русском
+- Пустая строка: разделитель болков 1,2,3,4
 - Ничего лишнего, кроме указанного
 
-ФОРМАТ (СОБЛЮДАЙ ТОЧНО!):
+ФОРМАТ БЛОКОВ (СОБЛЮДАЙ ТОЧНО!):
 
 🚀 [Переведенный заголовок на русском]
 
