@@ -1,9 +1,9 @@
 name: Forbes AI Parser
 
 on:
-  workflow_dispatch:  # Только ручной запуск для теста
+  workflow_dispatch:  # Ручной запуск для теста
   schedule:
-    - cron: '0 */6 * * *'  # Каждые 6 часов (закомментировать для теста)
+    - cron: '0 */6 * * *'  # Каждые 6 часов
 
 jobs:
   parse-news:
@@ -31,8 +31,9 @@ jobs:
     - name: Run Forbes Parser
       id: parser
       run: |
+        cd src
         python forbes_github.py
-        echo "NEWS_COUNT=$(find results -name '*.txt' -exec cat {} \; | grep -c 'LINK:' || echo 0)" >> $GITHUB_OUTPUT
+        echo "NEWS_COUNT=$(find ../results -name '*.txt' -exec cat {} \; | grep -c 'LINK:' || echo 0)" >> $GITHUB_OUTPUT
         
     - name: Show results
       run: |
@@ -46,5 +47,5 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add last_news.json results/
-        git commit -m "🤖 Test: Forbes AI parser results"
+        git commit -m "🤖 Auto-update: новые новости Forbes AI"
         git push
