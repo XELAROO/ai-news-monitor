@@ -12,7 +12,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -51,5 +53,5 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add .
-        git commit -m "🤖 Auto-update: новые новости Forbes AI"
+        git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
         git push
