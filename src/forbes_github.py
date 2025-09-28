@@ -109,47 +109,59 @@ def parse_forbes_ai():
         found_known_news = False
         
         print("🔍 Finding news...")
-        time_elements = driver.find_elements(By.TAG_NAME, "time")
-        print(f"📅 Found: {len(time_elements)} time elements")
+        # Ищем КОНТЕЙНЕРЫ статей, а не отдельные time элементы
+        article_containers = driver.find_elements(By.CSS_SELECTOR, "article, [data-test-id], .stream-item")
+        print(f"📦 Found containers: {len(article_containers)}")
         
-        for time_elem in time_elements:
+        # Если не нашли контейнеры, ищем по структуре
+        if not article_containers:
+            print("🔍 Alternative search...")
+            # Ищем все блоки, содержащие time и заголовок
+            article_containers = driver.find_elements(By.XPATH, "//div[.//time and .//h3]")
+            print(f"📦 Alternative containers: {len(article_containers)}")
+        
+        for container in article_containers:
             if found_known_news:
                 break
             try:
+                # Ищем time ВНУТРИ этого контейнера
+                time_elem = container.find_element(By.TAG_NAME, "time")
                 date_text = time_elem.text.strip()
                 if not date_text:
                     continue
                 
-                container = time_elem.find_element(By.XPATH, "./ancestor::div[position() < 10]")
-                title_elems = container.find_elements(By.CSS_SELECTOR, "h2 a, h3 a, h4 a")
+                # Ищем заголовок ВНУТРИ этого же контейнера
+                title_elem = container.find_element(By.CSS_SELECTOR, "h3 a, h2 a, h4 a")
+                title = title_elem.text.strip()
+                href = title_elem.get_attribute('href')
                 
-                if title_elems:
-                    title_elem = title_elems[0]
-                    title = title_elem.text.strip()
-                    href = title_elem.get_attribute('href')
+                if title and href and len(title) > 10:
+                    current_article = {
+                        'date': date_text,
+                        'title': title,
+                        'link': href,
+                        'fingerprint': generate_fingerprint(title, href)
+                    }
                     
-                    if title and href and len(title) > 10:
-                        current_article = {
-                            'date': date_text,
-                            'title': title,
-                            'link': href,
-                            'fingerprint': generate_fingerprint(title, href)
-                        }
-                        
-                        if last_news and is_same_news(current_article, last_news):
-                            print(f"🛑 Reached known news")
-                            found_known_news = True
-                            break
-                        
-                        articles.append(current_article)
-                        print(f"✅ {len(articles)}: {date_text} - {title[:50]}...")
-                        
-            except Exception:
+                    # Проверяем на дубликаты по ссылке
+                    if any(a['link'] == href for a in articles):
+                        continue
+                    
+                    if last_news and is_same_news(current_article, last_news):
+                        print(f"🛑 Reached known news: {title[:60]}...")
+                        found_known_news = True
+                        break
+                    
+                    articles.append(current_article)
+                    print(f"✅ {len(articles)}: {date_text} - {title[:50]}...")
+                    
+            except Exception as e:
+                # Пропускаем контейнеры без нужных элементов
                 continue
         
         if articles:
             save_last_news(articles[0])
-            print(f"💾 New last news saved")
+            print(f"💾 New last news: {articles[0]['title'][:60]}...")
         
         return articles
         
