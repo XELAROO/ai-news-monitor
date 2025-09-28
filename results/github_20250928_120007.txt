@@ -71,7 +71,3 @@ New articles: 20
    TITLE: No Pixel 10 Needed: Google Photos’ Conversational Editing Comes To All Android Devices
    LINK: https://www.forbes.com/sites/paulmonckton/2025/09/24/no-pixel-10-needed-google-photos-conversational-editing-comes-to-all-android-devices/?ss=ai
 --------------------------------------------------
-19. DATE: Sep 24, 2025
-   TITLE: Getting Started With Microsoft Copilot: A Guide To Driving ROI
-   LINK: https://www.forbes.com/sites/larryenglish/2025/09/24/getting-started-with-microsoft-copilot-a-guide-to-driving-roi/?ss=ai
---------------------------------------------------
