@@ -1,9 +1,9 @@
 name: Forbes AI Parser
 
 on:
-  workflow_dispatch:  # Ручной запуск для теста
+  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # Каждые 6 часов
+    - cron: '0 */6 * * *'
 
 jobs:
   parse-news:
@@ -18,10 +18,14 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Install system dependencies
+    - name: Install Chrome and dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y chromium-browser chromium-chromedriver
+        sudo apt-get install -y wget
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
         
     - name: Install Python dependencies
       run: |
@@ -33,12 +37,12 @@ jobs:
       run: |
         cd src
         python forbes_github.py
-        echo "NEWS_COUNT=$(find ../results -name '*.txt' -exec cat {} \; | grep -c 'LINK:' || echo 0)" >> $GITHUB_OUTPUT
+        echo "NEWS_COUNT=$(( $(find . -name '*.txt' -exec cat {} \; | grep -c 'LINK:' 2>/dev/null || echo 0) ))" >> $GITHUB_OUTPUT
         
     - name: Show results
       run: |
         echo "=== PARSER RESULTS ==="
-        find results -name '*.txt' -exec echo "File: {}" \; -exec cat {} \;
+        find . -name '*.txt' -path '*/results/*' -exec echo "File: {}" \; -exec cat {} \; || echo "No results found"
         echo "======================"
         
     - name: Commit results
@@ -46,6 +50,6 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add last_news.json results/
+        git add .
         git commit -m "🤖 Auto-update: новые новости Forbes AI"
         git push
