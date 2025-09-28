@@ -1,7 +1,7 @@
 FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-28 12:00:07
-New articles: 7
+New articles: 6
 
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
@@ -26,8 +26,4 @@ New articles: 7
 7. DATE: Sep 26, 2025
    TITLE: The Tractors Drive Themselves: Innovation In Fargo
    LINK: https://www.forbes.com/sites/johnwerner/2025/09/26/the-tractors-drive-themselves-innovation-in-fargo-nd/?ss=ai
---------------------------------------------------
-8. DATE: Sep 26, 2025
-   TITLE: Spotify Tightens AI Policy And Trims Catalog
-   LINK: https://www.forbes.com/sites/billrosenblatt/2025/09/26/spotify-tightens-ai-policy-and-trims-catalog/?ss=ai
 --------------------------------------------------
