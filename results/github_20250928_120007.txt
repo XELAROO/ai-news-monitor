@@ -1,7 +1,7 @@
 FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-28 12:00:07
-New articles: 9
+New articles: 8
 
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
@@ -34,8 +34,4 @@ New articles: 9
 9. DATE: Sep 26, 2025
    TITLE: Databricks Offers New Agent Ecosystem With OpenAI Models
    LINK: https://www.forbes.com/sites/johnwerner/2025/09/26/databricks-offers-new-agent-ecosystem-with-openai-models/?ss=ai
---------------------------------------------------
-10. DATE: Sep 26, 2025
-   TITLE: Capital Spending On AI May Be Vastly Outpacing Potential Revenue
-   LINK: https://www.forbes.com/sites/the-prototype/2025/09/26/capital-spending-on-ai-may-be-vastly-outpacing-demand/?ss=ai
 --------------------------------------------------
