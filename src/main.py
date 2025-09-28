@@ -63,7 +63,7 @@ class ExistingFilesNewsManager:
             return []
     
     def parse_forbes_format(self, content):
-        """Парсит специфический формат Forbes"""
+        """Парсит специфический формат Forbes и очищает URL"""
         news_lines = []
         blocks = content.split('--------------------------------------------------')
         
@@ -79,15 +79,30 @@ class ExistingFilesNewsManager:
                         title = line.replace('TITLE:', '').strip()
                     elif line.startswith('LINK:'):
                         link = line.replace('LINK:', '').strip()
+                        # Очищаем URL от параметров ?ss=ai
+                        link = self.clean_forbes_url(link)
                 
                 if title and link:
                     news_lines.append(f"{title} | {link}")
         
         logger.info(f"📰 Распаршено {len(news_lines)} новостей из Forbes формата")
         return news_lines
+
+    def clean_forbes_url(self, url):
+        """Очищает Forbes URL от параметров ?ss=ai и других трекеров"""
+        try:
+            # Удаляем параметры ?ss=ai и другие UTM-метки
+            if '?' in url:
+                base_url = url.split('?')[0]
+                logger.info(f"🔗 Очищен URL: {url} -> {base_url}")
+                return base_url
+            return url
+        except Exception as e:
+            logger.error(f"❌ Ошибка очистки URL {url}: {e}")
+            return url
     
     def get_oldest_unsent_news(self):
-        """Находит самую старую непрочитанную новость из всех файлов"""
+        """Находит самую СВЕЖУЮ непрочитанную новость из всех файлов"""
         # Получаем все файлы по паттерну
         news_files = glob.glob(self.files_pattern)
         if not news_files:
@@ -104,7 +119,8 @@ class ExistingFilesNewsManager:
             
             logger.info(f"📖 Чтение файла {os.path.basename(filepath)}: {len(news_lines)} новостей")
             
-            for news_line in news_lines:
+            # Ищем непрочитанные новости в ОБРАТНОМ порядке (сначала самые свежие)
+            for news_line in reversed(news_lines):
                 # Создаем уникальный идентификатор новости
                 news_hash = hash(news_line)
                 if news_hash not in self.sent_news:
@@ -152,7 +168,7 @@ class ExistingFilesNewsManager:
             logger.error(f"❌ Ошибка удаления новости из файла: {e}")
     
     def remove_forbes_news_block(self, content, news_line_to_remove):
-        """Удаляет блок новости из Forbes формата"""
+        """Удаляет блок новости из Forbes формата (исправленная версия)"""
         if '|' not in news_line_to_remove:
             return content
             
@@ -161,62 +177,89 @@ class ExistingFilesNewsManager:
         
         blocks = content.split('--------------------------------------------------')
         updated_blocks = []
+        removed_count = 0
         
         for block in blocks:
+            # Пропускаем только блок с нужным заголовком
             if 'TITLE:' in block and title_to_remove in block:
-                # Пропускаем блок с удаляемой новостью
+                logger.info(f"🗑️ Удаляю блок с заголовком: {title_to_remove}")
+                removed_count += 1
                 continue
             updated_blocks.append(block)
         
-        return '--------------------------------------------------'.join(updated_blocks)
+        logger.info(f"📊 Удалено блоков: {removed_count}")
+        
+        # Обновляем счетчик New articles
+        result_content = '--------------------------------------------------'.join(updated_blocks)
+        result_content = self.update_articles_count(result_content, removed_count)
+        
+        return result_content
+
+    def update_articles_count(self, content, removed_count=1):
+        """Обновляет счетчик New articles в Forbes формате"""
+        try:
+            lines = content.split('\n')
+            for i, line in enumerate(lines):
+                if line.strip().startswith('New articles:'):
+                    # Извлекаем текущее количество
+                    current_count = int(line.split(':')[1].strip())
+                    new_count = max(0, current_count - removed_count)
+                    lines[i] = f"New articles: {new_count}"
+                    logger.info(f"📊 Обновлен счетчик: {current_count} -> {new_count}")
+                    break
+            
+            return '\n'.join(lines)
+        except Exception as e:
+            logger.error(f"❌ Ошибка обновления счетчика: {e}")
+            return content
     
     def remove_empty_file(self, filepath):
-        """Удаляет файл если он пустой"""
+        """Удаляет файл если в нем нет новостей"""
         try:
-            if os.path.exists(filepath) and os.path.getsize(filepath) == 0:
-                os.remove(filepath)
-                logger.info(f"🗑️ Удален пустой файл {os.path.basename(filepath)}")
-        except Exception as e:
-            logger.error(f"❌ Ошибка удаления файла: {e}")
-
-    def parse_forbes_format(self, content):
-    """Парсит специфический формат Forbes и очищает URL"""
-        news_lines = []
-        blocks = content.split('--------------------------------------------------')
-    
-    for block in blocks:
-        if 'TITLE:' in block and 'LINK:' in block:
-            lines = block.strip().split('\n')
-            title = None
-            link = None
+            if not os.path.exists(filepath):
+                return
+                
+            with open(filepath, 'r', encoding='utf-8') as f:
+                content = f.read()
             
-            for line in lines:
-                line = line.strip()
-                if line.startswith('TITLE:'):
-                    title = line.replace('TITLE:', '').strip()
-                elif line.startswith('LINK:'):
-                    link = line.replace('LINK:', '').strip()
-                    # Очищаем URL от параметров ?ss=ai
-                    link = self.clean_forbes_url(link)
+            # Проверяем, есть ли в файле реальные новости
+            if self.file_has_news(content):
+                logger.info(f"📄 В файле {os.path.basename(filepath)} еще есть новости")
+                return
             
-            if title and link:
-                news_lines.append(f"{title} | {link}")
-    
-    logger.info(f"📰 Распаршено {len(news_lines)} новостей из Forbes формата")
-    return news_lines
-
-    def clean_forbes_url(self, url):
-        """Очищает Forbes URL от параметров ?ss=ai и других трекеров"""
-        try:
-            # Удаляем параметры ?ss=ai и другие UTM-метки
-            if '?' in url:
-                base_url = url.split('?')[0]
-                logger.info(f"🔗 Очищен URL: {url} -> {base_url}")
-                return base_url
-            return url
+            # Если новостей нет - удаляем файл
+            os.remove(filepath)
+            logger.info(f"🗑️ Удален пустой файл {os.path.basename(filepath)}")
+            
         except Exception as e:
-            logger.error(f"❌ Ошибка очистки URL {url}: {e}")
-            return url
+            logger.error(f"❌ Ошибка проверки файла {filepath}: {e}")
+
+    def file_has_news(self, content):
+        """Проверяет, есть ли в содержимом файла новости"""
+        # Если это Forbes формат
+        if 'FORBES AI - GITHUB PARSER' in content:
+            # Проверяем, есть ли блоки с новостями (с TITLE и LINK)
+            blocks = content.split('--------------------------------------------------')
+            news_blocks = 0
+            
+            for block in blocks:
+                if 'TITLE:' in block and 'LINK:' in block:
+                    # Проверяем, что это реальная новость, а не заголовок
+                    lines = block.strip().split('\n')
+                    has_title = any('TITLE:' in line and len(line.replace('TITLE:', '').strip()) > 0 for line in lines)
+                    has_link = any('LINK:' in line and len(line.replace('LINK:', '').strip()) > 0 for line in lines)
+                    
+                    if has_title and has_link:
+                        news_blocks += 1
+            
+            logger.info(f"📊 В файле найдено блоков с новостями: {news_blocks}")
+            return news_blocks > 0
+        
+        else:
+            # Простой формат - проверяем наличие строк с разделителем |
+            lines = [line.strip() for line in content.split('\n') if line.strip()]
+            news_lines = [line for line in lines if '|' in line]
+            return len(news_lines) > 0
 
 class AsyncYandexGPTMonitor:
     def __init__(self):
