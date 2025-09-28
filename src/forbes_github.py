@@ -14,8 +14,9 @@ try:
 except ImportError:
     SELENIUM_AVAILABLE = False
 
-LAST_NEWS_FILE = 'last_news.json'
-RESULTS_DIR = 'results'
+# Сохраняем файлы в корень репозитория (на уровень выше src)
+LAST_NEWS_FILE = '../last_news.json'
+RESULTS_DIR = '../results'
 
 def ensure_dirs():
     os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -67,13 +68,11 @@ def setup_github_selenium():
     options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36')
     
     try:
-        # Используем webdriver-manager для автоматической установки ChromeDriver
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
         return driver
     except Exception as e:
         print(f"❌ Chrome error: {e}")
-        # Fallback - попробуем системный Chrome
         try:
             options.binary_location = '/usr/bin/google-chrome'
             driver = webdriver.Chrome(options=options)
@@ -105,21 +104,14 @@ def parse_forbes_ai_github():
         print("📄 Loading Forbes AI...")
         driver.get("https://www.forbes.com/ai/")
         print("⏳ Waiting for content...")
-        time.sleep(12)  # Увеличиваем время ожидания
+        time.sleep(12)
         
         articles = []
         found_known_news = False
         
         print("🔍 Finding news...")
-        # Пробуем разные способы поиска элементов
         time_elements = driver.find_elements(By.TAG_NAME, "time")
         print(f"📅 Time elements found: {len(time_elements)}")
-        
-        if not time_elements:
-            print("🔍 Trying alternative search...")
-            # Альтернативный поиск
-            links = driver.find_elements(By.TAG_NAME, "a")
-            print(f"🔗 Total links found: {len(links)}")
         
         for time_elem in time_elements:
             if found_known_news:
@@ -129,7 +121,6 @@ def parse_forbes_ai_github():
                 if not date_text:
                     continue
                 
-                # Ищем заголовок рядом
                 container = time_elem.find_element(By.XPATH, "./ancestor::div[position() < 10]")
                 title_elems = container.find_elements(By.CSS_SELECTOR, "h2 a, h3 a, h4 a")
                 
