@@ -5,12 +5,10 @@ on:
     - cron: '0 * * * *'  # Каждый час, 24/7
   workflow_dispatch:
 
-# ↓↓↓ ДОБАВИТЬ ЭТОТ БЛОК ↓↓↓
 permissions:
   contents: write  # Права на запись файлов
   actions: read    # Права на чтение действий
   checks: read     # Права на чтение проверок
-# ↑↑↑ ДОБАВИТЬ ЭТОТ БЛОК ↑↑↑
 
 jobs:
   publish-hourly-news:
@@ -21,17 +19,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Если нужен доступ
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          fetch-depth: 0  # Для работы с историей коммитов
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          cache: 'pip'  # Ускорит установку
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+
+      - name: Prepare environment
+        run: |
+          # Создаем пустой файл с правами на запись
+          touch sent_news.json
+          chmod 666 sent_news.json
+          # Проверяем права на запись в results
+          chmod -R 777 results
 
       - name: Publish hourly AI News
         env:
@@ -41,3 +48,22 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
         run: |
           python src/main.py
+
+      - name: Verify file creation
+        run: |
+          echo "Содержимое корневой директории:"
+          ls -la
+          echo "Содержимое results:"
+          ls -la results
+          echo "Проверка прав на sent_news.json:"
+          ls -la sent_news.json
+
+      - name: Commit changes
+        if: always()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add sent_news.json
+          git add results/*
+          git commit -m "Автообновление данных" || true
+          git push || true
