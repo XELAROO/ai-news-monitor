@@ -6,7 +6,7 @@ on:
     - cron: '0 */6 * * *'
 
 permissions:
-  contents: write  # Добавляем необходимые права на запись
+  contents: write
 
 jobs:
   parse-news:
@@ -16,7 +16,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # Используем персональный токен вместо GITHUB_TOKEN
+        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -43,9 +43,8 @@ jobs:
     - name: Run Forbes Parser
       id: parser
       run: |
-        cd src
         python forbes_github.py
-        echo "NEWS_COUNT=$(cat ../news_count.txt)" >> $GITHUB_OUTPUT
+        echo "NEWS_COUNT=$(cat news_count.txt)" >> $GITHUB_OUTPUT
         
     - name: Show files before commit
       run: |
@@ -62,5 +61,10 @@ jobs:
         git config --local user.name "GitHub Action"
         git add results/ last_news.json news_count.txt
         git status
+        
+        # Сначала получаем последние изменения
+        git pull origin main --rebase --autostash
+        
+        # Затем коммитим и пушим
         git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
-        git push
+        git push origin main
