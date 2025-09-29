@@ -3,7 +3,3 @@ FORBES AI - GITHUB PARSER
 Time: 2025-09-28 12:00:07
 New articles: 1
 
-2. DATE: 4 hours ago
-   TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
-   LINK: https://www.forbes.com/sites/saharhashmi/2025/09/28/why-ai-evals-and-kpis-are-the-new-standard-for-scaling-healthcare-ai/?ss=ai
---------------------------------------------------
