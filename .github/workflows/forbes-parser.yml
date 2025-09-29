@@ -1,25 +1,21 @@
 name: Forbes AI Parser
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'
-
-permissions:
-  contents: write
+    - cron: '0 */6 * * *'  # Каждые 6 часов
+  workflow_dispatch:  # Ручной запуск
 
 jobs:
-  parse-news:
+  parse:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 0
         
-    - name: Setup Python
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
@@ -27,59 +23,33 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install selenium webdriver-manager
+        pip install -r requirements.txt
         
     - name: Run parser
-      id: parser
       run: |
-        python forbes_github.py
-        NEWS_COUNT=$(cat news_count.txt)
-        echo "NEWS_COUNT=$NEWS_COUNT" >> $GITHUB_OUTPUT
+        python src/forbes_github.py
         
-    - name: Configure Git
+    - name: Check what files were created
+      run: |
+        echo "📁 Current directory structure:"
+        find . -name "*.txt" -o -name "*.json" | head -20
+        echo "📁 Results directory:"
+        ls -la results/ || echo "No results directory"
+        
+    # 🔥 КРИТИЧЕСКИЙ ШАГ: Коммит результатов
+    - name: Commit and push if changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-    - name: Add and commit changes
-      run: |
         # Добавляем все изменения
-        git add .
-        git add results/*
-        git add news_count.txt
-        git add last_news.json
+        git add results/ last_news.json news_count.txt
         
-        # Проверяем статус
-        git status
-        
-        # Проверяем наличие изменений
+        # Проверяем есть ли изменения
         if git diff --staged --quiet; then
-          echo "No changes to commit"
+          echo "📭 No changes to commit"
         else
-          git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
-        fi
-        
-    - name: Push changes
-      run: |
-        git push origin main || true
-        
-    - name: Final verification
-      run: |
-        echo "=== FINAL VERIFICATION ==="
-        echo "Results directory contents:"
-        ls -la results/ || echo "No results directory"
-        echo "Latest commit:"
-        git log --oneline -n 3 || echo "No git history"
-        echo "Checking file existence:"
-        find results/ -type f -name "*.txt" -exec ls -la {} \;
-        
-    - name: Handle no changes
-      if: ${{ success() }}
-      run: |
-        # Если изменений не было, но файлы должны быть
-        if [ ! -f "results/github_*.txt" ]; then
-          echo "⚠️ Files exist but not staged, forcing commit..."
-          git add results/*
-          git commit -m "🤖 Force update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI" --allow-empty
-          git push origin main || true
+          echo "💾 Changes detected, committing..."
+          git commit -m "🤖 Auto-update: Forbes AI parser results $(date +'%Y-%m-%d %H:%M')"
+          git push
         fi
