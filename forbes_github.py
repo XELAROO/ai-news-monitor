@@ -106,7 +106,7 @@ def parse_forbes_ai():
         time.sleep(8)
         
         articles = []
-        found_known_news = False
+        all_articles = []  # Для отладки - все найденные статьи
         
         print("🔍 Finding news using precise XPath...")
         
@@ -118,7 +118,7 @@ def parse_forbes_ai():
             print("❌ 'More From AI' section not found")
             return []
         
-        # Парсим новости начиная с первой (самой свежей)
+        # Сначала соберем ВСЕ статьи для анализа
         news_index = 1
         while True:
             try:
@@ -142,31 +142,45 @@ def parse_forbes_ai():
                         'fingerprint': generate_fingerprint(title, href)
                     }
                     
-                    # Проверяем, не дошли ли до известной новости
-                    if last_news and is_same_news(current_article, last_news):
-                        print(f"🛑 Reached known news: {title[:60]}...")
-                        found_known_news = True
-                        break
-                    
-                    # Добавляем только если это НОВАЯ новость
-                    articles.append(current_article)
-                    print(f"✅ NEW {len(articles)}: {date_text} - {title[:50]}...")
+                    all_articles.append(current_article)
+                    print(f"📰 Found article {news_index}: {title[:50]}...")
                     
                 news_index += 1
                 
             except Exception as e:
                 # Если не нашли элемент - значит новости закончились
-                print(f"📭 No more news found (index {news_index})")
+                print(f"📭 No more news found (index {news_index}), total found: {len(all_articles)}")
                 break
         
-        # Сохраняем самую свежую новость как маркер для следующего парсинга
-        if articles:
-            save_last_news(articles[0])
-            print(f"💾 New last news saved: {articles[0]['title'][:60]}...")
-        elif found_known_news:
-            print("📝 No new articles since last check")
+        # Теперь определим, какие статьи являются новыми
+        if last_news:
+            print(f"\n🔍 Looking for last known news: {last_news['title'][:50]}...")
+            last_news_index = -1
+            
+            # Найдем индекс последней известной новости
+            for i, article in enumerate(all_articles):
+                if is_same_news(article, last_news):
+                    last_news_index = i
+                    print(f"✅ Found last known news at position {i+1}")
+                    break
+            
+            if last_news_index >= 0:
+                # Все статьи ДО последней известной - это новые статьи
+                articles = all_articles[:last_news_index]
+                print(f"🎯 New articles found: {len(articles)} (positions 1-{last_news_index})")
+            else:
+                # Если последняя известная новость не найдена, берем все статьи
+                articles = all_articles
+                print(f"⚠️ Last known news not found, taking all {len(articles)} articles")
         else:
-            print("📭 No articles found at all")
+            # Если нет предыдущих новостей, берем все
+            articles = all_articles
+            print(f"📝 No previous news, taking all {len(articles)} articles")
+        
+        # Сохраняем самую свежую новость как маркер для следующего парсинга
+        if all_articles:
+            save_last_news(all_articles[0])
+            print(f"💾 New last news saved: {all_articles[0]['title'][:60]}...")
         
         return articles
         
@@ -213,10 +227,9 @@ def main():
     if articles:
         print(f"\n✅ SUCCESS! Found: {len(articles)} new articles")
         
-        # ДЛЯ ОТЛАДКИ - принудительно сохраняем
-        print("🔧 DEBUG: Saving articles...")
+        print("📋 New articles list:")
         for i, article in enumerate(articles, 1):
-            print(f"   {i}. {article['title'][:50]}...")
+            print(f"   {i}. {article['title'][:60]}...")
         
         filename = save_results(articles)
         print(f"💾 All files saved successfully")
