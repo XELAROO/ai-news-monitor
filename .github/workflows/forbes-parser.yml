@@ -1,16 +1,16 @@
-name: Forbes AI Parser
+name: Test File Operations
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'  # Каждые 6 часов
-  workflow_dispatch:  # Ручной запуск
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
-  parse:
+  test-file-operations:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -18,38 +18,20 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.x'
         
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install pyyaml
         
-    - name: Run parser
-      run: |
-        python forbes_github.py
-        
-    - name: Check what files were created
-      run: |
-        echo "📁 Current directory structure:"
-        find . -name "*.txt" -o -name "*.json" | head -20
-        echo "📁 Results directory:"
-        ls -la results/ || echo "No results directory"
-        
-    # 🔥 КРИТИЧЕСКИЙ ШАГ: Коммит результатов
+    - name: Run test script
+      run: python forbes_github.py
+      
     - name: Commit and push if changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        
-        # Добавляем все изменения
-        git add results/ last_news.json news_count.txt
-        
-        # Проверяем есть ли изменения
-        if git diff --staged --quiet; then
-          echo "📭 No changes to commit"
-        else
-          echo "💾 Changes detected, committing..."
-          git commit -m "🤖 Auto-update: Forbes AI parser results $(date +'%Y-%m-%d %H:%M')"
-          git push
-        fi
+        git add .
+        git diff --staged --quiet || git commit -m "Auto-commit: Test file operations $(date +%Y%m%d_%H%M%S)"
+        git push
