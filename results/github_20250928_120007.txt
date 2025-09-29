@@ -1,7 +1,7 @@
 FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-28 12:00:07
-New articles: 3
+New articles: 2
 
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
@@ -10,8 +10,4 @@ New articles: 3
 3. DATE: 5 hours ago
    TITLE: Harvard’s BKC Explores Whether Human Intelligence And AI Computational Intelligence Are Actually The Same
    LINK: https://www.forbes.com/sites/lanceeliot/2025/09/28/harvards-bkc-explores-whether-human-intelligence-and-ai-computational-intelligence-are-actually-the-same/?ss=ai
---------------------------------------------------
-4. DATE: 6 hours ago
-   TITLE: The 4H Blueprint: Space, ProSocial AI And Planetary Health
-   LINK: https://www.forbes.com/sites/corneliawalther/2025/09/28/the-4h-blueprint-space-prosocial-ai-and-planetary-health/?ss=ai
 --------------------------------------------------
