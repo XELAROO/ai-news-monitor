@@ -17,6 +17,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0  # Полная история коммитов
         
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -40,6 +41,7 @@ jobs:
     - name: Show initial state
       run: |
         echo "=== INITIAL STATE ==="
+        echo "Current working directory: $(pwd)"
         echo "Results files:"
         ls -la results/ 2>/dev/null || echo "No results directory"
         echo "News count:"
@@ -53,67 +55,54 @@ jobs:
         echo "NEWS_COUNT=$NEWS_COUNT" >> $GITHUB_OUTPUT
         echo "News count: $NEWS_COUNT"
         
-    - name: Sync filesystem
+    - name: Sync filesystem and verify
       run: |
         echo "🔄 Syncing filesystem..."
         sync
         sleep 3
         echo "✅ Filesystem synced"
+        echo "Checking file permissions:"
+        ls -la results/
         
-    - name: Show files after parsing and sync
+    - name: Show files after parsing
       run: |
-        echo "=== AFTER PARSING AND SYNC ==="
+        echo "=== AFTER PARSING ==="
         echo "Current directory: $(pwd)"
         echo "Results directory:"
         ls -la results/ || echo "No results directory"
         echo "All .txt files in results:"
         find results/ -name "*.txt" -type f 2>/dev/null | head -10 || echo "No txt files"
-        echo "News count content:"
-        cat news_count.txt || echo "No news_count.txt"
-        echo "Last news content:"
-        cat last_news.json || echo "No last_news.json"
         
     - name: Configure Git
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-    - name: Check for changes
-      id: changes
+    - name: Add and commit changes
       run: |
-        git add -A
+        echo "Adding all changes..."
+        git add .
+        git add results/* last_news.json news_count.txt
         git status
+        
         if git diff --staged --quiet; then
-          echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
-          echo "❌ No changes to commit"
-          echo "Debug - listing all files:"
-          find . -name "*.txt" -o -name "*.json" | head -20
+          echo "No changes to commit"
         else
-          echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
-          echo "✅ Changes detected - will commit"
-          git status --short
+          git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
         fi
         
-    - name: Commit and push changes
-      if: steps.changes.outputs.HAS_CHANGES == 'true'
+    - name: Push changes
       run: |
-        git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
-        git push origin main
+        echo "Pushing changes..."
+        git push origin main || true
         
-    - name: Force commit if no changes but should have
-      if: steps.changes.outputs.HAS_CHANGES == 'false' && steps.parser.outputs.NEWS_COUNT > 0
+    - name: Force commit if needed
+      if: ${{ success() }}
       run: |
-        echo "⚠️ No changes detected but NEWS_COUNT > 0, forcing commit..."
-        # Принудительно добавляем файлы
-        git add -f results/ last_news.json news_count.txt
-        git status
-        git commit -m "🤖 Force update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI" --allow-empty
-        git push origin main
-        
-    - name: No changes needed
-      if: steps.changes.outputs.HAS_CHANGES == 'false' && steps.parser.outputs.NEWS_COUNT == 0
-      run: |
-        echo "✅ No new news found - workflow completed successfully"
+        echo "Checking for forced commit..."
+        git add results/* last_news.json news_count.txt
+        git commit -m "🤖 Force update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI" --allow-empty || true
+        git push origin main || true
         
     - name: Final verification
       run: |
@@ -122,3 +111,5 @@ jobs:
         ls -la results/ || echo "No results directory"
         echo "Latest commit:"
         git log --oneline -n 3 || echo "No git history"
+        echo "Checking file existence:"
+        test -f results/github_*.txt && echo "
