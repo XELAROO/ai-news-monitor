@@ -1,9 +1,0 @@
-FORBES AI - GITHUB PARSER
-==================================================
-Time: 2025-09-28 13:10:42
-New articles: 1
-
-1. DATE: 56 minutes ago
-   TITLE: Microsoft Offers Discounted AI To The Federal Government
-   LINK: https://www.forbes.com/sites/solrashidi/2025/09/28/microsoft-offers-discounted-ai-to-the-federal-government/?ss=ai
---------------------------------------------------
