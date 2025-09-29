@@ -17,7 +17,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 0  # Добавляем полную историю коммитов
         
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -54,13 +53,21 @@ jobs:
         echo "NEWS_COUNT=$NEWS_COUNT" >> $GITHUB_OUTPUT
         echo "News count: $NEWS_COUNT"
         
-    - name: Show files after parsing
+    - name: Sync filesystem
       run: |
-        echo "=== AFTER PARSING ==="
+        echo "🔄 Syncing filesystem..."
+        sync
+        sleep 3
+        echo "✅ Filesystem synced"
+        
+    - name: Show files after parsing and sync
+      run: |
+        echo "=== AFTER PARSING AND SYNC ==="
+        echo "Current directory: $(pwd)"
         echo "Results directory:"
         ls -la results/ || echo "No results directory"
-        echo "Newest result file:"
-        ls -1t results/*.txt 2>/dev/null | head -1 | xargs -I {} echo "Latest: {}" || echo "No result files"
+        echo "All .txt files in results:"
+        find results/ -name "*.txt" -type f 2>/dev/null | head -10 || echo "No txt files"
         echo "News count content:"
         cat news_count.txt || echo "No news_count.txt"
         echo "Last news content:"
@@ -71,31 +78,47 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-    - name: Add and commit changes
+    - name: Check for changes
+      id: changes
       run: |
-        git add .
+        git add -A
         git status
         if git diff --staged --quiet; then
-          echo "No changes to commit"
+          echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
+          echo "❌ No changes to commit"
+          echo "Debug - listing all files:"
+          find . -name "*.txt" -o -name "*.json" | head -20
         else
-          git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
+          echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
+          echo "✅ Changes detected - will commit"
+          git status --short
         fi
         
-    - name: Push changes
+    - name: Commit and push changes
+      if: steps.changes.outputs.HAS_CHANGES == 'true'
       run: |
-        git push origin main || true
+        git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
+        git push origin main
         
-    - name: Handle no changes
-      if: ${{ success() }}
+    - name: Force commit if no changes but should have
+      if: steps.changes.outputs.HAS_CHANGES == 'false' && steps.parser.outputs.NEWS_COUNT > 0
       run: |
-        echo "Проверка на случай, если файлы не были добавлены:"
-        git add results/*
-        git commit -m "🤖 Force add results files" -m "--allow-empty" || true
-        git push origin main || true
+        echo "⚠️ No changes detected but NEWS_COUNT > 0, forcing commit..."
+        # Принудительно добавляем файлы
+        git add -f results/ last_news.json news_count.txt
+        git status
+        git commit -m "🤖 Force update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI" --allow-empty
+        git push origin main
         
-    - name: Final check
+    - name: No changes needed
+      if: steps.changes.outputs.HAS_CHANGES == 'false' && steps.parser.outputs.NEWS_COUNT == 0
       run: |
-        echo "Финальная проверка содержимого:"
-        ls -la results/
-        cat news_count.txt
-        cat last_news.json
+        echo "✅ No new news found - workflow completed successfully"
+        
+    - name: Final verification
+      run: |
+        echo "=== FINAL VERIFICATION ==="
+        echo "Results directory contents:"
+        ls -la results/ || echo "No results directory"
+        echo "Latest commit:"
+        git log --oneline -n 3 || echo "No git history"
