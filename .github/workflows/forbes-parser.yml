@@ -1,8 +1,8 @@
 name: PARS
 
 on:
-  push:
-    branches: [ main, master ]
+  schedule:
+    - cron: '0 * * * *'  # Каждый час, 24/7
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
