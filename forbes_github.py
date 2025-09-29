@@ -24,6 +24,8 @@ def ensure_dirs():
     """Создает директории если их нет"""
     os.makedirs(RESULTS_DIR, exist_ok=True)
     print(f"📁 Results dir: {RESULTS_DIR}")
+    print(f"📁 Results dir exists: {os.path.exists(RESULTS_DIR)}")
+    print(f"📁 Results dir absolute path: {os.path.abspath(RESULTS_DIR)}")
 
 def generate_fingerprint(title, url):
     return hashlib.md5(f"{title}|{url}".encode()).hexdigest()
@@ -196,24 +198,44 @@ def save_results(articles):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = os.path.join(RESULTS_DIR, f"github_{timestamp}.txt")
     
-    with open(filename, 'w', encoding='utf-8') as f:
-        f.write("FORBES AI - GITHUB PARSER\n")
-        f.write("=" * 50 + "\n")
-        f.write(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"New articles: {len(articles)}\n\n")
+    print(f"📝 Creating file: {filename}")
+    print(f"📝 Absolute file path: {os.path.abspath(filename)}")
+    
+    try:
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write("FORBES AI - GITHUB PARSER\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"New articles: {len(articles)}\n\n")
+            
+            for i, article in enumerate(articles, 1):
+                f.write(f"{i}. DATE: {article['date']}\n")
+                f.write(f"   TITLE: {article['title']}\n")
+                f.write(f"   LINK: {article['link']}\n")
+                f.write("-" * 50 + "\n")
         
-        for i, article in enumerate(articles, 1):
-            f.write(f"{i}. DATE: {article['date']}\n")
-            f.write(f"   TITLE: {article['title']}\n")
-            f.write(f"   LINK: {article['link']}\n")
-            f.write("-" * 50 + "\n")
+        # Проверяем, что файл действительно создался
+        if os.path.exists(filename):
+            file_size = os.path.getsize(filename)
+            print(f"✅ File successfully created: {filename}")
+            print(f"✅ File size: {file_size} bytes")
+            print(f"✅ File exists: {os.path.exists(filename)}")
+        else:
+            print(f"❌ File was not created: {filename}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error saving file: {e}")
+        return None
     
     # Сохраняем количество новостей
-    with open(NEWS_COUNT_FILE, 'w') as f:
-        f.write(str(len(articles)))
-    
-    print(f"💾 Results saved to: {filename}")
-    print(f"💾 News count saved to: {NEWS_COUNT_FILE}")
+    try:
+        with open(NEWS_COUNT_FILE, 'w', encoding='utf-8') as f:
+            f.write(str(len(articles)))
+        print(f"💾 News count saved to: {NEWS_COUNT_FILE}")
+        print(f"💾 News count value: {len(articles)}")
+    except Exception as e:
+        print(f"❌ Error saving news count: {e}")
     
     return filename
 
@@ -232,21 +254,33 @@ def main():
             print(f"   {i}. {article['title'][:60]}...")
         
         filename = save_results(articles)
-        print(f"💾 All files saved successfully")
         
-        # Проверяем что файл создался
-        if os.path.exists(filename):
-            print(f"📁 File created: {filename}")
-            with open(filename, 'r', encoding='utf-8') as f:
-                content = f.read()
-                print(f"📄 File content length: {len(content)} chars")
+        if filename and os.path.exists(filename):
+            print(f"💾 All files saved successfully")
+            
+            # Показываем содержимое папки results
+            print(f"\n📁 Contents of results directory:")
+            try:
+                files = os.listdir(RESULTS_DIR)
+                for file in files:
+                    file_path = os.path.join(RESULTS_DIR, file)
+                    file_size = os.path.getsize(file_path)
+                    print(f"   - {file} ({file_size} bytes)")
+            except Exception as e:
+                print(f"❌ Error listing directory: {e}")
+            
         else:
-            print(f"❌ File NOT created: {filename}")
+            print(f"❌ File was not created successfully")
             
     else:
         print("📭 No new news found")
-        with open(NEWS_COUNT_FILE, 'w') as f:
-            f.write("0")
+        # Все равно сохраняем 0 в news_count.txt
+        try:
+            with open(NEWS_COUNT_FILE, 'w', encoding='utf-8') as f:
+                f.write("0")
+            print(f"💾 News count saved: 0")
+        except Exception as e:
+            print(f"❌ Error saving news count: {e}")
 
 if __name__ == "__main__":
     main()
