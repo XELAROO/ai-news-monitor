@@ -10,7 +10,7 @@ import yaml
 from datetime import datetime
 
 class GitTestScript:
-    def __init__(self, config_path="config.yaml"):
+    def __init__(self, config_path="test-script.yml"):
         self.config = self.load_config(config_path)
         self.setup_logging()
         self.run_count = self.get_run_count()
