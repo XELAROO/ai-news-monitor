@@ -58,12 +58,10 @@ jobs:
           echo "Проверка прав на sent_news.json:"
           ls -la sent_news.json
 
-      - name: Commit changes
-        if: always()
+      - name: Commit and push if changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add sent_news.json
-          git add results/*
-          git commit -m "Автообновление данных" || true
-          git push || true
+          git add .
+          git diff --staged --quiet || git commit -m "Auto-commit: File operations $(date +%Y%m%d_%H%M%S)"
+          git push
