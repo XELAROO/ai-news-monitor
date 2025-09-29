@@ -27,7 +27,7 @@ jobs:
         
     - name: Run parser
       run: |
-        python src/forbes_github.py
+        python forbes_github.py
         
     - name: Check what files were created
       run: |
