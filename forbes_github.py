@@ -192,7 +192,17 @@ def parse_forbes_ai():
     finally:
         if driver:
             driver.quit()
-            
+
+def force_file_sync(filename):
+    """Принудительная синхронизация файла с файловой системой"""
+    try:
+        # Синхронизируем конкретный файл
+        with open(filename, 'a') as f:
+            os.fsync(f.fileno())
+        print(f"🔄 File synced: {filename}")
+    except Exception as e:
+        print(f"⚠️ File sync warning: {e}")
+
 def save_results(articles):
     ensure_dirs()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -214,12 +224,20 @@ def save_results(articles):
                 f.write(f"   LINK: {article['link']}\n")
                 f.write("-" * 50 + "\n")
         
+        # 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Принудительная синхронизация
+        force_file_sync(filename)
+        
         # Проверяем, что файл действительно создался
         if os.path.exists(filename):
             file_size = os.path.getsize(filename)
             print(f"✅ File successfully created: {filename}")
             print(f"✅ File size: {file_size} bytes")
             print(f"✅ File exists: {os.path.exists(filename)}")
+            
+            # Дополнительная проверка - читаем содержимое
+            with open(filename, 'r', encoding='utf-8') as f:
+                content = f.read()
+                print(f"✅ File content verified, length: {len(content)} chars")
         else:
             print(f"❌ File was not created: {filename}")
             return None
@@ -232,12 +250,38 @@ def save_results(articles):
     try:
         with open(NEWS_COUNT_FILE, 'w', encoding='utf-8') as f:
             f.write(str(len(articles)))
+        
+        # Синхронизируем news_count.txt
+        force_file_sync(NEWS_COUNT_FILE)
+        
         print(f"💾 News count saved to: {NEWS_COUNT_FILE}")
         print(f"💾 News count value: {len(articles)}")
+        
+        # Проверяем записанное значение
+        with open(NEWS_COUNT_FILE, 'r', encoding='utf-8') as f:
+            saved_count = f.read().strip()
+            print(f"💾 News count verified: {saved_count}")
+            
     except Exception as e:
         print(f"❌ Error saving news count: {e}")
     
     return filename
+
+def check_results_directory():
+    """Проверяет и выводит содержимое папки results"""
+    print(f"\n🔍 CHECKING RESULTS DIRECTORY:")
+    print(f"📁 Path: {RESULTS_DIR}")
+    print(f"📁 Exists: {os.path.exists(RESULTS_DIR)}")
+    
+    if os.path.exists(RESULTS_DIR):
+        files = os.listdir(RESULTS_DIR)
+        print(f"📁 Number of files: {len(files)}")
+        for file in sorted(files, reverse=True):  # Сортируем по убыванию (новые сначала)
+            file_path = os.path.join(RESULTS_DIR, file)
+            file_size = os.path.getsize(file_path)
+            print(f"   📄 {file} ({file_size} bytes)")
+    else:
+        print("❌ Results directory does not exist!")
 
 def main():
     print("=" * 60)
@@ -259,15 +303,7 @@ def main():
             print(f"💾 All files saved successfully")
             
             # Показываем содержимое папки results
-            print(f"\n📁 Contents of results directory:")
-            try:
-                files = os.listdir(RESULTS_DIR)
-                for file in files:
-                    file_path = os.path.join(RESULTS_DIR, file)
-                    file_size = os.path.getsize(file_path)
-                    print(f"   - {file} ({file_size} bytes)")
-            except Exception as e:
-                print(f"❌ Error listing directory: {e}")
+            check_results_directory()
             
         else:
             print(f"❌ File was not created successfully")
@@ -278,9 +314,17 @@ def main():
         try:
             with open(NEWS_COUNT_FILE, 'w', encoding='utf-8') as f:
                 f.write("0")
+            
+            # Синхронизируем
+            force_file_sync(NEWS_COUNT_FILE)
+            
             print(f"💾 News count saved: 0")
         except Exception as e:
             print(f"❌ Error saving news count: {e}")
+    
+    # Финальная проверка директории
+    print(f"\n🎯 FINAL DIRECTORY CHECK:")
+    check_results_directory()
 
 if __name__ == "__main__":
     main()
