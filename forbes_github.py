@@ -118,7 +118,7 @@ def parse_forbes_ai():
             print("❌ 'More From AI' section not found")
             return []
         
-        # Парсим новости начиная с первой
+        # Парсим новости начиная с первой (самой свежей)
         news_index = 1
         while True:
             try:
@@ -148,8 +148,9 @@ def parse_forbes_ai():
                         found_known_news = True
                         break
                     
+                    # Добавляем только если это НОВАЯ новость
                     articles.append(current_article)
-                    print(f"✅ {len(articles)}: {date_text} - {title[:50]}...")
+                    print(f"✅ NEW {len(articles)}: {date_text} - {title[:50]}...")
                     
                 news_index += 1
                 
@@ -158,9 +159,14 @@ def parse_forbes_ai():
                 print(f"📭 No more news found (index {news_index})")
                 break
         
+        # Сохраняем самую свежую новость как маркер для следующего парсинга
         if articles:
             save_last_news(articles[0])
             print(f"💾 New last news saved: {articles[0]['title'][:60]}...")
+        elif found_known_news:
+            print("📝 No new articles since last check")
+        else:
+            print("📭 No articles found at all")
         
         return articles
         
@@ -216,7 +222,6 @@ def main():
         print(f"💾 All files saved successfully")
         
         # Проверяем что файл создался
-        import os
         if os.path.exists(filename):
             print(f"📁 File created: {filename}")
             with open(filename, 'r', encoding='utf-8') as f:
@@ -229,5 +234,6 @@ def main():
         print("📭 No new news found")
         with open(NEWS_COUNT_FILE, 'w') as f:
             f.write("0")
-    ensure_dirs()
+
+if __name__ == "__main__":
     main()
