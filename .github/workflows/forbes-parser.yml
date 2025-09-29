@@ -1,4 +1,4 @@
-name: Test File Operations
+name: PARS
 
 on:
   push:
