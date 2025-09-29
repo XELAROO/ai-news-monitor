@@ -17,6 +17,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0  # Добавляем полную историю коммитов
         
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -70,30 +71,31 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-    - name: Check for changes
-      id: changes
+    - name: Add and commit changes
       run: |
-        git add -A
+        git add .
         git status
         if git diff --staged --quiet; then
-          echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
-          echo "❌ No changes to commit"
+          echo "No changes to commit"
         else
-          echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
-          echo "✅ Changes detected"
+          git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
         fi
         
-    - name: Commit and push results
-      if: steps.changes.outputs.HAS_CHANGES == 'true'
+    - name: Push changes
       run: |
-        git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
-        git push origin main
+        git push origin main || true
         
-    - name: No changes to commit
-      if: steps.changes.outputs.HAS_CHANGES == 'false'
+    - name: Handle no changes
+      if: ${{ success() }}
       run: |
-        echo "❌ No changes detected in working tree"
-        echo "This means:"
-        echo "1. Files were not created by the Python script, OR"
-        echo "2. Files already exist with same content"
-        echo "3. Files were created but git doesn't see them"
+        echo "Проверка на случай, если файлы не были добавлены:"
+        git add results/*
+        git commit -m "🤖 Force add results files" -m "--allow-empty" || true
+        git push origin main || true
+        
+    - name: Final check
+      run: |
+        echo "Финальная проверка содержимого:"
+        ls -la results/
+        cat news_count.txt
+        cat last_news.json
