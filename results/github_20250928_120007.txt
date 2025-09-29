@@ -1,7 +1,7 @@
 FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-28 12:00:07
-New articles: 4
+New articles: 3
 
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
@@ -14,8 +14,4 @@ New articles: 4
 4. DATE: 6 hours ago
    TITLE: The 4H Blueprint: Space, ProSocial AI And Planetary Health
    LINK: https://www.forbes.com/sites/corneliawalther/2025/09/28/the-4h-blueprint-space-prosocial-ai-and-planetary-health/?ss=ai
---------------------------------------------------
-5. DATE: 15 hours ago
-   TITLE: Google Photos May Get Nano Banana AI , Claims New Report
-   LINK: https://www.forbes.com/sites/paulmonckton/2025/09/27/google-photos-may-get-nanobanana-ai--claims-new-report/?ss=ai
 --------------------------------------------------
