@@ -1,7 +1,7 @@
 FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-28 12:00:07
-New articles: 6
+New articles: 5
 
 2. DATE: 4 hours ago
    TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
@@ -22,8 +22,4 @@ New articles: 6
 6. DATE: 22 hours ago
    TITLE: What Does AI-First Leadership Mean For Today’s Business Leaders?
    LINK: https://www.forbes.com/sites/kathleenwalch/2025/09/27/what-does-ai-first-leadership-mean-for-todays-business-leaders/?ss=ai
---------------------------------------------------
-7. DATE: Sep 26, 2025
-   TITLE: The Tractors Drive Themselves: Innovation In Fargo
-   LINK: https://www.forbes.com/sites/johnwerner/2025/09/26/the-tractors-drive-themselves-innovation-in-fargo-nd/?ss=ai
 --------------------------------------------------
