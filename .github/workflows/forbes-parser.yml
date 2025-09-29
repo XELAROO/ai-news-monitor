@@ -16,7 +16,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -27,7 +27,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y wget
-        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
         echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
@@ -46,6 +46,7 @@ jobs:
         python forbes_github.py
         NEWS_COUNT=$(cat news_count.txt)
         echo "NEWS_COUNT=$NEWS_COUNT" >> $GITHUB_OUTPUT
+        echo "news_count=$NEWS_COUNT" >> $GITHUB_ENV
         echo "News count: $NEWS_COUNT"
         
     - name: Show files before commit
@@ -56,22 +57,24 @@ jobs:
         ls -la results/ || echo "No results directory"
         echo "=========================="
         
-    - name: Commit results
-      if: env.NEWS_COUNT > 0
+    - name: Configure Git
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        
+    - name: Pull latest changes
+      run: |
+        git pull origin main --rebase --autostash || echo "No changes to pull"
+        
+    - name: Commit and push results
+      if: steps.parser.outputs.NEWS_COUNT > 0
+      run: |
         git add results/ last_news.json news_count.txt
         git status
-        
-        # Сначала получаем последние изменения
-        git pull origin main --rebase --autostash
-        
-        # Затем коммитим и пушим
-        git commit -m "🤖 Auto-update: ${{ env.NEWS_COUNT }} новых новостей Forbes AI"
+        git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
         git push origin main
         
     - name: No new news
-      if: env.NEWS_COUNT == 0
+      if: steps.parser.outputs.NEWS_COUNT == 0
       run: |
         echo "✅ No new news found - workflow completed successfully"
