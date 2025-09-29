@@ -43,10 +43,16 @@ jobs:
         
     - name: Add and commit changes
       run: |
-        git add.
+        # Добавляем все изменения
+        git add .
         git add results/*
+        git add news_count.txt
+        git add last_news.json
+        
+        # Проверяем статус
         git status
         
+        # Проверяем наличие изменений
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
@@ -66,3 +72,14 @@ jobs:
         git log --oneline -n 3 || echo "No git history"
         echo "Checking file existence:"
         find results/ -type f -name "*.txt" -exec ls -la {} \;
+        
+    - name: Handle no changes
+      if: ${{ success() }}
+      run: |
+        # Если изменений не было, но файлы должны быть
+        if [ ! -f "results/github_*.txt" ]; then
+          echo "⚠️ Files exist but not staged, forcing commit..."
+          git add results/*
+          git commit -m "🤖 Force update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI" --allow-empty
+          git push origin main || true
+        fi
