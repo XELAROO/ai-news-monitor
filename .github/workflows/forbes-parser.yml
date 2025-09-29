@@ -37,44 +37,63 @@ jobs:
         python -m pip install --upgrade pip
         pip install selenium webdriver-manager
         
-    - name: Create results directory
-      run: mkdir -p results
-      
+    - name: Show initial state
+      run: |
+        echo "=== INITIAL STATE ==="
+        echo "Results files:"
+        ls -la results/ 2>/dev/null || echo "No results directory"
+        echo "News count:"
+        cat news_count.txt 2>/dev/null || echo "No news_count.txt"
+        
     - name: Run Forbes Parser
       id: parser
       run: |
         python forbes_github.py
         NEWS_COUNT=$(cat news_count.txt)
         echo "NEWS_COUNT=$NEWS_COUNT" >> $GITHUB_OUTPUT
-        echo "news_count=$NEWS_COUNT" >> $GITHUB_ENV
         echo "News count: $NEWS_COUNT"
         
-    - name: Show files before commit
+    - name: Show files after parsing
       run: |
-        echo "=== FILES IN REPOSITORY ==="
-        find . -name '*.txt' -o -name '*.json' | head -20
-        echo "=== RESULTS DIRECTORY ==="
+        echo "=== AFTER PARSING ==="
+        echo "Results directory:"
         ls -la results/ || echo "No results directory"
-        echo "=========================="
+        echo "Newest result file:"
+        ls -1t results/*.txt 2>/dev/null | head -1 | xargs -I {} echo "Latest: {}" || echo "No result files"
+        echo "News count content:"
+        cat news_count.txt || echo "No news_count.txt"
+        echo "Last news content:"
+        cat last_news.json || echo "No last_news.json"
         
     - name: Configure Git
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
-    - name: Pull latest changes
+    - name: Check for changes
+      id: changes
       run: |
-        git pull origin main --rebase --autostash || echo "No changes to pull"
+        git add -A
+        git status
+        if git diff --staged --quiet; then
+          echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
+          echo "❌ No changes to commit"
+        else
+          echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
+          echo "✅ Changes detected"
+        fi
         
     - name: Commit and push results
-      if: steps.parser.outputs.NEWS_COUNT > 0
+      if: steps.changes.outputs.HAS_CHANGES == 'true'
       run: |
-        git add results/ last_news.json news_count.txt
-        git status
         git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
         git push origin main
         
-    - name: No new news
-      if: steps.parser.outputs.NEWS_COUNT == 0
+    - name: No changes to commit
+      if: steps.changes.outputs.HAS_CHANGES == 'false'
       run: |
-        echo "✅ No new news found - workflow completed successfully"
+        echo "❌ No changes detected in working tree"
+        echo "This means:"
+        echo "1. Files were not created by the Python script, OR"
+        echo "2. Files already exist with same content"
+        echo "3. Files were created but git doesn't see them"
