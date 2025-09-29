@@ -1,0 +1,17 @@
+app:
+  name: "GitHub Actions Test Script"
+  version: "1.0"
+  
+paths:
+  folder_name: "test_results"
+  log_file: "script.log"
+  
+content:
+  messages:
+    - "Первое тестовое сообщение"
+    - "Второе тестовое сообщение"
+    - "Третье тестовое сообщение"
+  
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(levelname)s - %(message)s"
