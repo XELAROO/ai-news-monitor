@@ -6,7 +6,7 @@ on:
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
-  test-file-operations:
+  operations:
     runs-on: ubuntu-latest
     
     steps:
@@ -25,7 +25,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Run test script
+    - name: Run script
       run: python forbes_github.py
       
     - name: Commit and push if changes
