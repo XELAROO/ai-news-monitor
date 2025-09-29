@@ -1,8 +1,6 @@
 name: TestToFile
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
