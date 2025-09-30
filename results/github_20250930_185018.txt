@@ -2,15 +2,10 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 18:50:18
 Run count: 4
-New articles: 2
+New articles: 1
 
 1. DATE: 45 minutes ago
    TITLE: Frontier Careers: Where Will New AI Jobs Be?
    LINK: https://www.forbes.com/sites/nishatalagala/2025/09/30/frontier-careers-where-will-new-ai-jobs-be/?ss=ai
---------------------------------------------------
-
-2. DATE: 2 hours ago
-   TITLE: Andrew Ng’s LandingAI Develops Specialized Model To Ease Document Intelligence
-   LINK: https://www.forbes.com/sites/victordey/2025/09/30/andrew-ngs-landingai-develops-specialized-model-to-ease-document-intelligence/?ss=ai
 --------------------------------------------------
 
