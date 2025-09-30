@@ -43,7 +43,6 @@ jobs:
     - name: Run Forbes Parser
       id: parser
       run: |
-        cd src
         python forbes_github.py
         echo "NEWS_COUNT=$(cat ../news_count.txt)" >> $GITHUB_OUTPUT
         
