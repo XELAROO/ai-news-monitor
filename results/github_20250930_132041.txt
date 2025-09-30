@@ -1,0 +1,16 @@
+FORBES AI - GITHUB PARSER
+==================================================
+Time: 2025-09-30 13:20:41
+Run count: 2
+New articles: 2
+
+1. DATE: 16 minutes ago
+   TITLE: ServiceNow Says AI-First Interfaces Will Define The Future Of Enterprise AI
+   LINK: https://www.forbes.com/sites/victordey/2025/09/30/servicenow-says-ai-first-interfaces-will-define-the-future-of-enterprise-ai/?ss=ai
+--------------------------------------------------
+
+2. DATE: 20 minutes ago
+   TITLE: Meet The Stanford Dropout Building An AI To Solve Math’s Hardest Problems—And Create Harder Ones
+   LINK: https://www.forbes.com/sites/rashishrivastava/2025/09/30/meet-the-stanford-dropout-building-an-ai-to-solve-maths-hardest-problems-and-create-harder-ones/?ss=ai
+--------------------------------------------------
+
