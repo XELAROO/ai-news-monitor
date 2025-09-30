@@ -54,12 +54,10 @@ jobs:
         ls -la results/ || echo "No results directory"
         echo "=========================="
         
-    - name: Commit results
-      if: steps.parser.outputs.NEWS_COUNT > 0
+    - name: Commit and push if changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add results/ last_news.json news_count.txt
-        git status
-        git commit -m "🤖 Auto-update: ${{ steps.parser.outputs.NEWS_COUNT }} новых новостей Forbes AI"
+        git add .
+        git diff --staged --quiet || git commit -m "Auto-commit: File operations $(date +%Y%m%d_%H%M%S)"
         git push
