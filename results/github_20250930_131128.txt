@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 6
+New articles: 5
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -27,9 +27,4 @@ New articles: 6
 5. DATE: 11 hours ago
    TITLE: The Rise Of AI-Powered Ransomware: The Need To Adapt.
    LINK: https://www.forbes.com/sites/chuckbrooks/2025/09/29/the-rise-of-ai-powered-ransomware-the-need-to-adapt/?ss=ai
---------------------------------------------------
-
-6. DATE: 15 hours ago
-   TITLE: Are Uber And Lyft Becoming Obsolete?
-   LINK: https://www.forbes.com/sites/johnwerner/2025/09/29/are-uber-and-lyft-becoming-obsolete/?ss=ai
 --------------------------------------------------
