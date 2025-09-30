@@ -16,7 +16,7 @@ except ImportError:
     SELENIUM_AVAILABLE = False
 
 # Конфигурация путей
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LAST_NEWS_FILE = os.path.join(BASE_DIR, 'last_news.json')
 RESULTS_DIR = os.path.join(BASE_DIR, 'results')
 NEWS_COUNT_FILE = os.path.join(BASE_DIR, 'news_count.txt')
