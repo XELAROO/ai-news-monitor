@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 13
+New articles: 12
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -62,9 +62,4 @@ New articles: 13
 12. DATE: Sep 28, 2025
    TITLE: Canada Joins The Global Push For Sovereign AI With TELUS AI Factory
    LINK: https://www.forbes.com/sites/ronschmelzer/2025/09/28/canada-joins-the-global-push-for-sovereign-ai-with-telus-ai-factory/?ss=ai
---------------------------------------------------
-
-13. DATE: Sep 28, 2025
-   TITLE: The Manager OS: 7 Things Every Manager Should Do To 2x Output With AI
-   LINK: https://www.forbes.com/sites/rachelwells/2025/09/28/the-manager-os-7-things-every-manager-should-do-to-2x-output-with-ai/?ss=ai
 --------------------------------------------------
