@@ -588,8 +588,7 @@ async def process_news_for_telegram():
         summarized_news = await monitor.yandex_gpt_call(prompt)
     
     if summarized_news:
-        # Удаляем ссылку из текста (если вдруг она есть)
-        cleaned_text = remove_url_from_text(summarized_news)
+        cleaned_text = summarized_news
         
         # Генерируем изображение
         image_prompt = extract_prompt_from_summary(cleaned_text)
