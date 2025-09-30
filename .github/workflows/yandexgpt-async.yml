@@ -1,4 +1,4 @@
-name: YandexGPT Async AI News Monitor
+name: YandexGPT Async PARS
 
 on:
   schedule:
