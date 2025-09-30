@@ -6,6 +6,7 @@ import glob
 import logging
 import time
 import base64
+import hashlib
 from datetime import datetime, timezone, timedelta
 
 # Настройка логирования
@@ -103,8 +104,7 @@ class ExistingFilesNewsManager:
             return url
     
     def get_oldest_unsent_news(self):
-        """Находит самую СВЕЖУЮ непрочитанную новость из всех файлов"""
-        # Получаем все файлы по паттерну
+        """Находит самую СТАРУЮ непрочитанную новость (снизу файлов)"""
         news_files = glob.glob(self.files_pattern)
         if not news_files:
             logger.info("📭 Файлы с новостями не найдены")
@@ -114,22 +114,55 @@ class ExistingFilesNewsManager:
         news_files.sort(key=os.path.getctime)
         logger.info(f"📁 Найдено файлов: {len(news_files)}")
         
+        # ОТЛАДКА: показываем очередь
+        logger.info("📋 ОЧЕРЕДЬ ОБРАБОТКИ (старые файлы первыми):")
+        for i, filepath in enumerate(news_files):
+            file_time = datetime.fromtimestamp(os.path.getctime(filepath))
+            logger.info(f"   {i+1}. {os.path.basename(filepath)} ({file_time.strftime('%d.%m %H:%M')})")
+        
         for filepath in news_files:
-            # Используем новый парсер вместо простого чтения
             news_lines = self.parse_news_file(filepath)
-            
             logger.info(f"📖 Чтение файла {os.path.basename(filepath)}: {len(news_lines)} новостей")
             
-            # Ищем непрочитанные новости в ОБРАТНОМ порядке (сначала самые свежие)
-            for news_line in reversed(news_lines):
-                # Создаем уникальный идентификатор новости
-                news_hash = hash(news_line)
+            if not news_lines:
+                continue
+                
+            # Ищем непрочитанные новости в ОБРАТНОМ порядке (снизу файла)
+            for i, news_line in enumerate(reversed(news_lines)):
+                position_in_file = len(news_lines) - i  # Позиция снизу
+                news_hash = hashlib.md5(news_line.encode('utf-8')).hexdigest()
+                
                 if news_hash not in self.sent_news:
-                    logger.info(f"🎯 Найдена новая новость: {news_line[:50]}...")
+                    title = news_line.split('|')[0].strip() if '|' in news_line else news_line[:50]
+                    logger.info(f"🎯 НАЙДЕНА СЛЕДУЮЩАЯ НОВОСТЬ:")
+                    logger.info(f"   Файл: {os.path.basename(filepath)}")
+                    logger.info(f"   Позиция в файле: {position_in_file}/{len(news_lines)} (снизу)")
+                    logger.info(f"   Заголовок: {title}")
                     return news_line, news_hash, filepath
-                        
-        logger.info("✅ Все новости уже отправлены")
+                else:
+                    logger.debug(f"   ✓ Уже отправлена: {news_line[:50]}...")
+                            
+            logger.info(f"   ✅ Все новости в файле уже отправлены")
+        
+        logger.info("✅ Все новости во всех файлах уже отправлены")
         return None
+
+    def show_next_news(self):
+        """Показывает какая новость будет следующей без отправки"""
+        news_data = self.get_oldest_unsent_news()
+        if news_data:
+            news_line, news_hash, filepath = news_data
+            title = news_line.split('|')[0].strip() if '|' in news_line else news_line
+            print("🎯 СЛЕДУЮЩАЯ НОВОСТЬ ДЛЯ ОТПРАВКИ:")
+            print(f"📁 Файл: {os.path.basename(filepath)}")
+            print(f"📰 Заголовок: {title}")
+            if '|' in news_line:
+                url = news_line.split('|')[1].strip()
+                print(f"🔗 URL: {url}")
+            return True
+        else:
+            print("✅ Все новости отправлены")
+            return False
     
     def mark_news_sent_and_cleanup(self, news_hash, news_line, filepath):
         """Помечает новость как отправленную и чистит файлы"""
@@ -170,23 +203,23 @@ class ExistingFilesNewsManager:
             logger.error(f"❌ Ошибка удаления новости из файла: {e}")
     
     def remove_forbes_news_block(self, content, news_line_to_remove):
-        """Удаляет блок новости из Forbes формата (улучшенная версия)"""
+        """Упрощенное удаление блока новости из Forbes формата"""
         if '|' not in news_line_to_remove:
             return content
             
-        # Извлекаем заголовок и URL из news_line (формат: "заголовок | url")
-        title_to_remove, url_to_remove = [part.strip() for part in news_line_to_remove.split('|', 1)]
+        # Извлекаем заголовок из news_line (формат: "заголовок | url")
+        title_to_remove = news_line_to_remove.split('|')[0].strip()
         
+        # Простой поиск по заголовку (без сложных сравнений URL)
         blocks = content.split('--------------------------------------------------')
         updated_blocks = []
         removed_count = 0
         
         for block in blocks:
-            # Ищем блок, который соответствует удаляемой новости
-            if self.is_matching_forbes_block(block, title_to_remove, url_to_remove):
+            if 'TITLE:' in block and title_to_remove in block:
                 logger.info(f"🗑️ Удаляю блок с заголовком: {title_to_remove}")
                 removed_count += 1
-                continue
+                continue  # Пропускаем этот блок
             updated_blocks.append(block)
         
         logger.info(f"📊 Удалено блоков: {removed_count}")
@@ -199,46 +232,6 @@ class ExistingFilesNewsManager:
         result_content = self.update_articles_count(result_content, removed_count)
         
         return result_content
-
-    def is_matching_forbes_block(self, block, target_title, target_url):
-        """Проверяет, соответствует ли блок Forbes искомой новости"""
-        if 'TITLE:' not in block or 'LINK:' not in block:
-            return False
-        
-        lines = block.strip().split('\n')
-        block_title = None
-        block_url = None
-        
-        for line in lines:
-            line = line.strip()
-            if line.startswith('TITLE:'):
-                block_title = line.replace('TITLE:', '').strip()
-            elif line.startswith('LINK:'):
-                block_url = line.replace('LINK:', '').strip()
-                # Очищаем URL для сравнения
-                block_url = self.clean_forbes_url(block_url)
-        
-        # Сравниваем очищенные URL (это более надежно чем заголовки)
-        if block_url and target_url:
-            # Нормализуем URL для сравнения
-            normalized_block_url = block_url.lower().rstrip('/')
-            normalized_target_url = target_url.lower().rstrip('/')
-            
-            if normalized_block_url == normalized_target_url:
-                logger.info(f"✅ Найден matching блок по URL: {block_url}")
-                return True
-        
-        # Если по URL не нашли, пробуем по заголовку (менее надежно)
-        if block_title and target_title:
-            # Убираем лишние пробелы и приводим к нижнему регистру для сравнения
-            normalized_block_title = ' '.join(block_title.lower().split())
-            normalized_target_title = ' '.join(target_title.lower().split())
-            
-            if normalized_block_title == normalized_target_title:
-                logger.info(f"✅ Найден matching блок по заголовку: {block_title}")
-                return True
-        
-        return False
 
     def update_articles_count(self, content, removed_count=1):
         """Обновляет счетчик New articles в Forbes формате"""
@@ -571,7 +564,7 @@ async def process_news_for_telegram():
 2. Текст: 3-5 предложения, только ключевые факты  
 3. Вывод: практическая польза/значение
 4. Хештеги: 3-5 релевантных тегов на русском
-- Пустая строка: разделитель блоков 1,2,3
+- Пустая строка: разделитель блоков 1,2,3,4
 - Ничего лишнего, кроме указанного
 
 ФОРМАТ БЛОКОВ (СОБЛЮДАЙ ТОЧНО!):
@@ -643,6 +636,14 @@ async def send_to_telegram_async(message, session):
     except Exception as e:
         logger.error(f"❌ Ошибка отправки в Telegram: {e}")
         return False
+
+async def show_news_queue():
+    """Показывает очередь новостей для отправки"""
+    news_manager = ExistingFilesNewsManager("results/github_*.txt")
+    print("=" * 80)
+    print("📋 ТЕКУЩАЯ ОЧЕРЕДЬ ОТПРАВКИ НОВОСТЕЙ")
+    print("=" * 80)
+    return news_manager.show_next_news()
         
 async def main():
     """Основная функция"""
@@ -667,5 +668,11 @@ if __name__ == "__main__":
         logger.error("❌ Отсутствуют необходимые переменные окружения")
         exit(1)
     
-    # Запуск
-    asyncio.run(main())
+    # Проверяем аргументы командной строки
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "queue":
+        # Показываем только очередь без отправки
+        asyncio.run(show_news_queue())
+    else:
+        # Запуск обычной обработки
+        asyncio.run(main())
