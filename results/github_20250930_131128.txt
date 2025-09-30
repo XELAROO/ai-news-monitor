@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 20
+New articles: 19
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -67,9 +67,4 @@ New articles: 20
 13. DATE: Sep 28, 2025
    TITLE: The Manager OS: 7 Things Every Manager Should Do To 2x Output With AI
    LINK: https://www.forbes.com/sites/rachelwells/2025/09/28/the-manager-os-7-things-every-manager-should-do-to-2x-output-with-ai/?ss=ai
---------------------------------------------------
-
-14. DATE: Sep 28, 2025
-   TITLE: Microsoft Offers Discounted AI To The Federal Government
-   LINK: https://www.forbes.com/sites/solrashidi/2025/09/28/microsoft-offers-discounted-ai-to-the-federal-government/?ss=ai
 --------------------------------------------------
