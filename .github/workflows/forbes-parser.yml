@@ -58,8 +58,12 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git fetch origin
-        git reset --hard origin/main
-        git add . 
-        git diff --staged --quiet || git commit -m "Auto-commit: File operations $(date +%Y%m%d_%H%M%S)"
-        git push origin main
+        git add results/ || echo "No results to add"
+        git add *.txt *.json *.log || echo "No log files to add"
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Auto-commit: File operations $(date +%Y%m%d_%H%M%S)"
+          git pull --rebase origin main
+          git push origin main
+        fi
