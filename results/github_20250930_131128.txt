@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 11
+New articles: 10
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -52,9 +52,4 @@ New articles: 11
 10. DATE: Sep 29, 2025
    TITLE: The 5 Technology Trends For 2026 Everyone Must Prepare For Now
    LINK: https://www.forbes.com/sites/bernardmarr/2025/09/29/the-top-5-technology-trends-for-2026/?ss=ai
---------------------------------------------------
-
-11. DATE: Sep 28, 2025
-   TITLE: Hidden Google Photos Code Suggests Return Of Missing Search Feature
-   LINK: https://www.forbes.com/sites/paulmonckton/2025/09/28/hidden-google-photos-code-suggests-return-of-missing-search-feature/?ss=ai
 --------------------------------------------------
