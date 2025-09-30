@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 19
+New articles: 13
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
