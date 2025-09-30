@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 10
+New articles: 9
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -47,9 +47,4 @@ New articles: 10
 9. DATE: Sep 29, 2025
    TITLE: Defining The Big Picture Framework When It Comes To The Economics Of Transformative AI
    LINK: https://www.forbes.com/sites/lanceeliot/2025/09/29/defining-the-big-picture-framework-when-it-comes-to-the-economics-of-transformative-ai/?ss=ai
---------------------------------------------------
-
-10. DATE: Sep 29, 2025
-   TITLE: The 5 Technology Trends For 2026 Everyone Must Prepare For Now
-   LINK: https://www.forbes.com/sites/bernardmarr/2025/09/29/the-top-5-technology-trends-for-2026/?ss=ai
 --------------------------------------------------
