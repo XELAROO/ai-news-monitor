@@ -58,6 +58,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
+        git pull --rebase origin main  # Синхронизация ВМ с репозиторием
         git add .
         git diff --staged --quiet || git commit -m "Auto-commit: File operations $(date +%Y%m%d_%H%M%S)"
         git push
