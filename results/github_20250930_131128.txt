@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 9
+New articles: 8
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -42,9 +42,4 @@ New articles: 9
 8. DATE: Sep 29, 2025
    TITLE: Waymos Get Stuck In Phoenix Flood, How Could They Do Better?
    LINK: https://www.forbes.com/sites/bradtempleton/2025/09/29/waymos-get-stuck-in-phoenix-flood-how-could-they-do-better/?ss=ai
---------------------------------------------------
-
-9. DATE: Sep 29, 2025
-   TITLE: Defining The Big Picture Framework When It Comes To The Economics Of Transformative AI
-   LINK: https://www.forbes.com/sites/lanceeliot/2025/09/29/defining-the-big-picture-framework-when-it-comes-to-the-economics-of-transformative-ai/?ss=ai
 --------------------------------------------------
