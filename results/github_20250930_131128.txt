@@ -1,0 +1,106 @@
+FORBES AI - GITHUB PARSER
+==================================================
+Time: 2025-09-30 13:11:28
+Run count: 1
+New articles: 20
+
+1. DATE: 25 minutes ago
+   TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
+   LINK: https://www.forbes.com/sites/moorinsights/2025/09/30/workday-rising-2025-showcases-workdays-pivot-to-ai-platform/?ss=ai
+--------------------------------------------------
+
+2. DATE: 26 minutes ago
+   TITLE: Stop Saying Generative Engine Optimization. It’s Called Answer Engine Optimization
+   LINK: https://www.forbes.com/sites/joetoscano1/2025/09/30/stop-saying-generative-engine-optimization-its-called-answer-engine-optimization/?ss=ai
+--------------------------------------------------
+
+3. DATE: 2 hours ago
+   TITLE: AI Meets Oral Health: The Race To Redefine Digital Dentistry
+   LINK: https://www.forbes.com/sites/kolawolesamueladebayo/2025/09/30/ai-meets-oral-health-the-race-to-redefine-digital-dentistry/?ss=ai
+--------------------------------------------------
+
+4. DATE: 6 hours ago
+   TITLE: Precision Mental Health Gets Precisely Boosted Via Innovative Uses Of Advanced AI And LLMs
+   LINK: https://www.forbes.com/sites/lanceeliot/2025/09/30/precision-mental-health-gets-precisely-boosted-via-innovative-uses-of-advanced-ai-and-llms/?ss=ai
+--------------------------------------------------
+
+5. DATE: 11 hours ago
+   TITLE: The Rise Of AI-Powered Ransomware: The Need To Adapt.
+   LINK: https://www.forbes.com/sites/chuckbrooks/2025/09/29/the-rise-of-ai-powered-ransomware-the-need-to-adapt/?ss=ai
+--------------------------------------------------
+
+6. DATE: 15 hours ago
+   TITLE: Are Uber And Lyft Becoming Obsolete?
+   LINK: https://www.forbes.com/sites/johnwerner/2025/09/29/are-uber-and-lyft-becoming-obsolete/?ss=ai
+--------------------------------------------------
+
+7. DATE: 15 hours ago
+   TITLE: New Snapdragon Mobile And PC Platforms Set To Fuel A New Breed Of Agentic AI
+   LINK: https://www.forbes.com/sites/davealtavilla/2025/09/29/new-snapdragon-mobile-and-pc-platforms-set-to-fuel-a-new-breed-of-agentic-ai/?ss=ai
+--------------------------------------------------
+
+8. DATE: Sep 29, 2025
+   TITLE: Waymos Get Stuck In Phoenix Flood, How Could They Do Better?
+   LINK: https://www.forbes.com/sites/bradtempleton/2025/09/29/waymos-get-stuck-in-phoenix-flood-how-could-they-do-better/?ss=ai
+--------------------------------------------------
+
+9. DATE: Sep 29, 2025
+   TITLE: Defining The Big Picture Framework When It Comes To The Economics Of Transformative AI
+   LINK: https://www.forbes.com/sites/lanceeliot/2025/09/29/defining-the-big-picture-framework-when-it-comes-to-the-economics-of-transformative-ai/?ss=ai
+--------------------------------------------------
+
+10. DATE: Sep 29, 2025
+   TITLE: The 5 Technology Trends For 2026 Everyone Must Prepare For Now
+   LINK: https://www.forbes.com/sites/bernardmarr/2025/09/29/the-top-5-technology-trends-for-2026/?ss=ai
+--------------------------------------------------
+
+11. DATE: Sep 28, 2025
+   TITLE: Hidden Google Photos Code Suggests Return Of Missing Search Feature
+   LINK: https://www.forbes.com/sites/paulmonckton/2025/09/28/hidden-google-photos-code-suggests-return-of-missing-search-feature/?ss=ai
+--------------------------------------------------
+
+12. DATE: Sep 28, 2025
+   TITLE: Canada Joins The Global Push For Sovereign AI With TELUS AI Factory
+   LINK: https://www.forbes.com/sites/ronschmelzer/2025/09/28/canada-joins-the-global-push-for-sovereign-ai-with-telus-ai-factory/?ss=ai
+--------------------------------------------------
+
+13. DATE: Sep 28, 2025
+   TITLE: The Manager OS: 7 Things Every Manager Should Do To 2x Output With AI
+   LINK: https://www.forbes.com/sites/rachelwells/2025/09/28/the-manager-os-7-things-every-manager-should-do-to-2x-output-with-ai/?ss=ai
+--------------------------------------------------
+
+14. DATE: Sep 28, 2025
+   TITLE: Microsoft Offers Discounted AI To The Federal Government
+   LINK: https://www.forbes.com/sites/solrashidi/2025/09/28/microsoft-offers-discounted-ai-to-the-federal-government/?ss=ai
+--------------------------------------------------
+
+15. DATE: Sep 28, 2025
+   TITLE: AI Safety Group Finds Agentic Tools Slow Down Open Source Devs
+   LINK: https://www.forbes.com/sites/johnwerner/2025/09/28/ai-safety-group-finds-agentic-tools-slow-down-open-source-devs/?ss=ai
+--------------------------------------------------
+
+16. DATE: Sep 28, 2025
+   TITLE: The Economic Singularity And The Five As
+   LINK: https://www.forbes.com/sites/calumchace/2025/09/28/the-economic-singularity-and-the-five-as/?ss=ai
+--------------------------------------------------
+
+17. DATE: Sep 28, 2025
+   TITLE: Why AI Evals And KPIs Are The New Standard For Scaling Healthcare AI
+   LINK: https://www.forbes.com/sites/saharhashmi/2025/09/28/why-ai-evals-and-kpis-are-the-new-standard-for-scaling-healthcare-ai/?ss=ai
+--------------------------------------------------
+
+18. DATE: Sep 28, 2025
+   TITLE: Harvard’s BKC Explores Whether Human Intelligence And AI Computational Intelligence Are Actually The Same
+   LINK: https://www.forbes.com/sites/lanceeliot/2025/09/28/harvards-bkc-explores-whether-human-intelligence-and-ai-computational-intelligence-are-actually-the-same/?ss=ai
+--------------------------------------------------
+
+19. DATE: Sep 28, 2025
+   TITLE: The 4H Blueprint: Space, Prosocial AI And Planetary Health
+   LINK: https://www.forbes.com/sites/corneliawalther/2025/09/28/the-4h-blueprint-space-prosocial-ai-and-planetary-health/?ss=ai
+--------------------------------------------------
+
+20. DATE: Sep 27, 2025
+   TITLE: Google Photos May Get Nano Banana AI , Claims New Report
+   LINK: https://www.forbes.com/sites/paulmonckton/2025/09/27/google-photos-may-get-nanobanana-ai--claims-new-report/?ss=ai
+--------------------------------------------------
+
