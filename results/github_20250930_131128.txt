@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 8
+New articles: 7
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -37,9 +37,4 @@ New articles: 8
 7. DATE: 15 hours ago
    TITLE: New Snapdragon Mobile And PC Platforms Set To Fuel A New Breed Of Agentic AI
    LINK: https://www.forbes.com/sites/davealtavilla/2025/09/29/new-snapdragon-mobile-and-pc-platforms-set-to-fuel-a-new-breed-of-agentic-ai/?ss=ai
---------------------------------------------------
-
-8. DATE: Sep 29, 2025
-   TITLE: Waymos Get Stuck In Phoenix Flood, How Could They Do Better?
-   LINK: https://www.forbes.com/sites/bradtempleton/2025/09/29/waymos-get-stuck-in-phoenix-flood-how-could-they-do-better/?ss=ai
 --------------------------------------------------
