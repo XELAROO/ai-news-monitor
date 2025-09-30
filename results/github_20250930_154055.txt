@@ -1,0 +1,16 @@
+FORBES AI - GITHUB PARSER
+==================================================
+Time: 2025-09-30 15:40:55
+Run count: 3
+New articles: 2
+
+1. DATE: 20 minutes ago
+   TITLE: Banking On Trust: FICO Launches Financial Foundation Models
+   LINK: https://www.forbes.com/sites/ronschmelzer/2025/09/30/banking-on-trust-fico-launches-financial-foundation-models/?ss=ai
+--------------------------------------------------
+
+2. DATE: 1 hour ago
+   TITLE: Synthetic Personas: The AI Edge Your Sales Team Needs
+   LINK: https://www.forbes.com/sites/michaelashley/2025/09/30/synthetic-personas-the-ai-edge-your-sales-team-needs/?ss=ai
+--------------------------------------------------
+
