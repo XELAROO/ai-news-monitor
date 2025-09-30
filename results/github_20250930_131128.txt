@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 5
+New articles: 4
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -22,9 +22,4 @@ New articles: 5
 4. DATE: 6 hours ago
    TITLE: Precision Mental Health Gets Precisely Boosted Via Innovative Uses Of Advanced AI And LLMs
    LINK: https://www.forbes.com/sites/lanceeliot/2025/09/30/precision-mental-health-gets-precisely-boosted-via-innovative-uses-of-advanced-ai-and-llms/?ss=ai
---------------------------------------------------
-
-5. DATE: 11 hours ago
-   TITLE: The Rise Of AI-Powered Ransomware: The Need To Adapt.
-   LINK: https://www.forbes.com/sites/chuckbrooks/2025/09/29/the-rise-of-ai-powered-ransomware-the-need-to-adapt/?ss=ai
 --------------------------------------------------
