@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 7
+New articles: 6
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
@@ -32,9 +32,4 @@ New articles: 7
 6. DATE: 15 hours ago
    TITLE: Are Uber And Lyft Becoming Obsolete?
    LINK: https://www.forbes.com/sites/johnwerner/2025/09/29/are-uber-and-lyft-becoming-obsolete/?ss=ai
---------------------------------------------------
-
-7. DATE: 15 hours ago
-   TITLE: New Snapdragon Mobile And PC Platforms Set To Fuel A New Breed Of Agentic AI
-   LINK: https://www.forbes.com/sites/davealtavilla/2025/09/29/new-snapdragon-mobile-and-pc-platforms-set-to-fuel-a-new-breed-of-agentic-ai/?ss=ai
 --------------------------------------------------
