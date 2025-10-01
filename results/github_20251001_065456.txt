@@ -2,15 +2,10 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-10-01 06:54:56
 Run count: 6
-New articles: 2
+New articles: 1
 
 1. DATE: 1 hour ago
    TITLE: Is Autonomous Driving Ever Going To Happen?
    LINK: https://www.forbes.com/sites/bernardmarr/2025/10/01/is-autonomous-driving-ever-going-to-happen/?ss=ai
---------------------------------------------------
-
-2. DATE: 3 hours ago
-   TITLE: Why AI Is Triggering A $11.2 Billion Healthcare Education Crisis From Memorization To Orchestration
-   LINK: https://www.forbes.com/sites/saharhashmi/2025/09/30/why-ai--is-triggering-a-112-billion-healthcare-education-crisis-from-memorization-to-orchestration/?ss=ai
 --------------------------------------------------
 
