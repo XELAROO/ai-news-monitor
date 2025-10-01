@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-10-01 03:35:02
 Run count: 5
-New articles: 5
+New articles: 4
 
 1. DATE: 2 hours ago
    TITLE: Massive Leap For AI Neoclouds With Deal Between Nebius And Microsoft
@@ -22,10 +22,5 @@ New articles: 5
 4. DATE: 3 hours ago
    TITLE: Firewalls Are Old-School: AI Needs New Approaches
    LINK: https://www.forbes.com/sites/johnwerner/2025/09/30/firewalls-are-old-school-ai-needs-new-approaches/?ss=ai
---------------------------------------------------
-
-5. DATE: 3 hours ago
-   TITLE: A Way Forward For AI Investors
-   LINK: https://www.forbes.com/sites/johnwerner/2025/09/30/a-way-forward-for-ai-investors/?ss=ai
 --------------------------------------------------
 
