@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-10-01 03:35:02
 Run count: 5
-New articles: 6
+New articles: 5
 
 1. DATE: 2 hours ago
    TITLE: Massive Leap For AI Neoclouds With Deal Between Nebius And Microsoft
@@ -27,10 +27,5 @@ New articles: 6
 5. DATE: 3 hours ago
    TITLE: A Way Forward For AI Investors
    LINK: https://www.forbes.com/sites/johnwerner/2025/09/30/a-way-forward-for-ai-investors/?ss=ai
---------------------------------------------------
-
-6. DATE: 7 hours ago
-   TITLE: Legal AI Startup Legora Is In Talks To Raise Funding At A $1.8 Billion Valuation
-   LINK: https://www.forbes.com/sites/rashishrivastava/2025/09/30/legal-ai-startup-legora-is-in-talks-to-raise-funding-at-a-18-billion-valuation/?ss=ai
 --------------------------------------------------
 
