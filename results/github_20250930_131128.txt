@@ -2,14 +2,9 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-09-30 13:11:28
 Run count: 1
-New articles: 2
+New articles: 1
 
 1. DATE: 25 minutes ago
    TITLE: Workday Rising 2025 Showcases Workday’s Pivot To AI Platform
    LINK: https://www.forbes.com/sites/moorinsights/2025/09/30/workday-rising-2025-showcases-workdays-pivot-to-ai-platform/?ss=ai
---------------------------------------------------
-
-2. DATE: 26 minutes ago
-   TITLE: Stop Saying Generative Engine Optimization. It’s Called Answer Engine Optimization
-   LINK: https://www.forbes.com/sites/joetoscano1/2025/09/30/stop-saying-generative-engine-optimization-its-called-answer-engine-optimization/?ss=ai
 --------------------------------------------------
