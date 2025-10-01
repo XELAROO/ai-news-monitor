@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-10-01 13:42:00
 Run count: 7
-New articles: 3
+New articles: 2
 
 1. DATE: 35 minutes ago
    TITLE: How AI Agents Will Break Passkeys — And 3 Ways To Fix Them
@@ -12,10 +12,5 @@ New articles: 3
 2. DATE: 3 hours ago
    TITLE: California AI Bill Sends Shock Waves Through The Industry
    LINK: https://www.forbes.com/sites/paulocarvao/2025/10/01/california-ai-bill-sends-shock-waves-through-the-industry/?ss=ai
---------------------------------------------------
-
-3. DATE: 6 hours ago
-   TITLE: Thinking Strategically About AI And Warfare Via An Outside-The-Box Lawful Frame Of Mind
-   LINK: https://www.forbes.com/sites/lanceeliot/2025/10/01/thinking-strategically-about-ai-and-warfare-via-an-outside-the-box-lawful-frame-of-mind/?ss=ai
 --------------------------------------------------
 
