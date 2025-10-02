@@ -2,15 +2,10 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-10-01 18:52:22
 Run count: 8
-New articles: 2
+New articles: 1
 
 1. DATE: 3 hours ago
    TITLE: Generative AI’s Leap—from Indie Labs To Global Screens
    LINK: https://www.forbes.com/sites/cathyrubin/2025/10/01/generative-ais-leap-from-indie-labs-to-global-screens/?ss=ai
---------------------------------------------------
-
-2. DATE: 4 hours ago
-   TITLE: 4 Weird Things We Could Mine From The Moon – AI And Much More
-   LINK: https://www.forbes.com/sites/johnwerner/2025/10/01/4-weird-things-we-could-mine-from-the-moon--ai-and-much-more/?ss=ai
 --------------------------------------------------
 
