@@ -2,7 +2,7 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-10-02 18:48:20
 Run count: 12
-New articles: 4
+New articles: 3
 
 1. DATE: 2 hours ago
    TITLE: Sora 2 Shifts Social Media To AI-Identities Media
@@ -17,10 +17,5 @@ New articles: 4
 3. DATE: 5 hours ago
    TITLE: Cloud Teams Face A GenAI Tsunami They’re Not Ready For
    LINK: https://www.forbes.com/sites/tonybradley/2025/10/02/cloud-teams-face-a-genai-tsunami-theyre-not-ready-for/?ss=ai
---------------------------------------------------
-
-4. DATE: 5 hours ago
-   TITLE: Robot Realities: The Road To Autonomous Non-Deterministic AI Agents
-   LINK: https://www.forbes.com/sites/adrianbridgwater/2025/10/02/robot-realities-the-road-to-autonomous-non-deterministic-ai-agents/?ss=ai
 --------------------------------------------------
 
