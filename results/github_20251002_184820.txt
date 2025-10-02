@@ -2,15 +2,10 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-10-02 18:48:20
 Run count: 12
-New articles: 2
+New articles: 1
 
 1. DATE: 2 hours ago
    TITLE: Sora 2 Shifts Social Media To AI-Identities Media
    LINK: https://www.forbes.com/sites/geruiwang/2025/10/02/sora-2-shifts-social-media-to-ai-identities-media/?ss=ai
---------------------------------------------------
-
-2. DATE: 2 hours ago
-   TITLE: Meme Machine: Sora 2 And Breaking Humanity’s Creative Standard
-   LINK: https://www.forbes.com/sites/johnwerner/2025/10/02/meme-machine-sora-2-and-breaking-humanitys-creative-standard/?ss=ai
 --------------------------------------------------
 
