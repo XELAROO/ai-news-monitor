@@ -2,15 +2,10 @@ FORBES AI - GITHUB PARSER
 ==================================================
 Time: 2025-10-02 13:21:01
 Run count: 11
-New articles: 2
+New articles: 1
 
 1. DATE: 1 hour ago
    TITLE: As The School Year Starts, We Need to Reimagine Learning in the AI Age
    LINK: https://www.forbes.com/sites/cortneyharding/2025/10/02/as-the-school-year-starts-we-need-to-reimagine-learning-in-the-ai-age/?ss=ai
---------------------------------------------------
-
-2. DATE: 6 hours ago
-   TITLE: Valiantly Looking For Truth And Certainty In AI And LLMs Gets Earnest Airtime At Harvard’s BKC
-   LINK: https://www.forbes.com/sites/lanceeliot/2025/10/02/valiantly-looking-for-truth-and-certainty-in-ai-and-llms-gets-earnest-airtime-at-harvards-bkc/?ss=ai
 --------------------------------------------------
 
