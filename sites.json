@@ -1,0 +1,16 @@
+{
+  "forbes": {
+    "url": "https://www.forbes.com/ai/",
+    "mode": "static",
+    "items_xpath": "//*[@id='row-2']/div/div/div/div[1]/div[1]/h2",
+    "title_xpath": "//*[@id='row-2']/div/div/div/div[1]/div[2]/div[1]/div/div/div[2]/h3/a",
+    "date_xpath": "//*[@id='row-2']/div/div/div/div[1]/div[2]/div[1]/div/div/div[2]/div[1]/time"
+  },
+  "wsj": {
+    "url": "https://www.wsj.com/tech/ai",
+    "mode": "selenium",
+    "items_xpath": "//*[@id='lazy-load-bottom-section']/div/div/div[1]/a/div/div[1]/div/div/h2",
+    "title_xpath": "//*[@id='lazy-load-bottom-section']/div/div/div[2]/div[1]/div/div[2]/div/div/h3/a",
+    "date_xpath": "//*[@id='lazy-load-bottom-section']/div/div/div[2]/div[1]/div/div[2]/div/div/div[4]/div/div[1]/div/p"
+  }
+}
