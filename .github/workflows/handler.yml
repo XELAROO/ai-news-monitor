@@ -19,13 +19,13 @@ jobs:
         python-version: "3.10"
 
     - name: Download DB artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: news-db
         path: .
 
     - name: Download parser log (optional, for context)
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: news-parser-log
         path: .
@@ -44,13 +44,14 @@ jobs:
       run: python news_handler_db.py
 
     - name: Upload updated DB artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: news-db
         path: news.db
 
     - name: Upload handler log
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: news-handler-log
         path: news_handler.log
+
