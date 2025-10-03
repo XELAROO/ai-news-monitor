@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+news_parser_db.py
+Парсер новостных сайтов по конфигу sites.json.
+Особенности:
+ - Парсер использует items_xpath как ЯКОРЬ (anchor).
+ - title_xpath и date_xpath должны содержать {news_index} (подставляется 1,2,3...).
+ - НЕТ fallback: если anchor не найден — сайт пропускается.
+ - Поддержка режимов: static (requests + lxml) и selenium.
+ - Создаёт news.db и лог news_parser.log в корне.
+ - Отправляет Telegram-уведомление на TELEGRAM_USER_ID (использует TELEGRAM_BOT_TOKEN).
+"""
 
 import os
-import hashlib
-import time
 import json
+import time
 import logging
 import sqlite3
-import requests
+import hashlib
 from datetime import datetime, timedelta
-from lxml import html
 from urllib.parse import urljoin
-import math
 
+import requests
+from lxml import html
+
+# Selenium optional
 try:
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
@@ -23,364 +35,570 @@ try:
 except Exception:
     SELENIUM_AVAILABLE = False
 
-# ---------- Конфигурация ----------
+# ----------------- Настройки -----------------
 BASE_DIR = os.getcwd()
-DB_PATH = os.path.join(BASE_DIR, "news.db")
-LOG_FILE = os.path.join(BASE_DIR, "news_parser.log")
 SITES_FILE = os.path.join(BASE_DIR, "sites.json")
+DB_FILE = os.path.join(BASE_DIR, "news.db")
+LOG_FILE = os.path.join(BASE_DIR, "news_parser.log")
 
-# Telegram: токены из окружения (GitHub Secrets)
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_USER_ID = os.getenv("TELEGRAM_USER_ID", "")
+DEFAULT_MAX_ITEMS = 100
+DEFAULT_CONSECUTIVE_MISS_BREAK = 3
+SELENIUM_WAIT_DEFAULT = 6  # seconds для загрузки страницы
 
-# ---------- Логирование ----------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger("news-parser")
+# ----------------- Логирование -----------------
+logger = logging.getLogger("news_parser")
+logger.setLevel(logging.DEBUG)
+# Файловый хэндлер
+fh = logging.FileHandler(LOG_FILE, encoding="utf-8")
+fh.setLevel(logging.DEBUG)
+fmt = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+fh.setFormatter(fmt)
+logger.addHandler(fh)
+# Консоль
+sh = logging.StreamHandler()
+sh.setFormatter(fmt)
+logger.addHandler(sh)
 
-# ---------- Утилиты ----------
-def estimate_tokens(text: str) -> int:
-    if not text:
-        return 1
-    return max(1, math.ceil(len(text) / 4.0))
-
-def send_telegram_message(text: str) -> bool:
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_USER_ID:
-        logger.warning("TELEGRAM_BOT_TOKEN или TELEGRAM_USER_ID не заданы. Пропускаем отправку Telegram.")
-        return False
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_USER_ID, "text": text}
-    try:
-        resp = requests.post(url, data=payload, timeout=15)
-        if resp.status_code != 200:
-            logger.error(f"Telegram send failed: {resp.status_code} {resp.text}")
-            return False
-        return True
-    except Exception as e:
-        logger.error(f"Telegram send exception: {e}")
-        return False
-
-# ---------- Класс работы с БД ----------
+# ----------------- Работа с БД -----------------
 class NewsDB:
-    def __init__(self, db_path=DB_PATH):
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self.init_db()
+    def __init__(self, path=DB_FILE):
+        self.path = path
+        self.conn = sqlite3.connect(self.path)
+        self._init_schema()
 
-    def init_db(self):
-        q = """
-        CREATE TABLE IF NOT EXISTS news (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            site TEXT NOT NULL,
-            title TEXT NOT NULL,
-            link TEXT NOT NULL,
-            pub_date TEXT NOT NULL,
-            parsed_date TEXT NOT NULL,
-            fingerprint TEXT UNIQUE NOT NULL,
-            status TEXT DEFAULT 'new'
-        );
-        """
-        self.conn.execute(q)
+    def _init_schema(self):
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS news (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                site TEXT,
+                title TEXT,
+                link TEXT,
+                pub_date TEXT,
+                parsed_date TEXT,
+                fingerprint TEXT UNIQUE,
+                status TEXT DEFAULT 'new'
+            )
+            """
+        )
         self.conn.commit()
 
-    def add_article(self, site, title, link, pub_date):
-        fingerprint = hashlib.md5(f"{title}|{link}".encode("utf-8")).hexdigest()
-        parsed_date = datetime.now().isoformat()
+    def fingerprint(self, title: str, link: str) -> str:
+        h = hashlib.sha1()
+        h.update((title + "|" + (link or "")).encode("utf-8"))
+        return h.hexdigest()
+
+    def add_article(self, site: str, title: str, link: str, pub_date: str) -> bool:
+        fp = self.fingerprint(title, link)
+        parsed_date = datetime.utcnow().isoformat()
         try:
             self.conn.execute(
-                """
-                INSERT INTO news (site, title, link, pub_date, parsed_date, fingerprint, status)
-                VALUES (?, ?, ?, ?, ?, ?, 'new')
-                """,
-                (site, title, link, pub_date, parsed_date, fingerprint),
+                "INSERT INTO news (site, title, link, pub_date, parsed_date, fingerprint, status) VALUES (?, ?, ?, ?, ?, ?, 'new')",
+                (site, title, link, pub_date, parsed_date, fp),
             )
             self.conn.commit()
             return True
         except sqlite3.IntegrityError:
             return False
 
-    def mark_posted(self, ids):
-        if not ids:
-            return
-        q = f"UPDATE news SET status='posted' WHERE id IN ({','.join('?'*len(ids))})"
-        self.conn.execute(q, ids)
-        self.conn.commit()
-
-    def mark_posted_one(self, id_):
-        self.conn.execute("UPDATE news SET status='posted' WHERE id = ?", (id_,))
-        self.conn.commit()
-
     def close(self):
         try:
             self.conn.close()
-        except:
+        except Exception:
             pass
 
-# ---------- Парсер ----------
+# ----------------- Утилиты -----------------
+def safe_int(v, default):
+    try:
+        return int(v)
+    except Exception:
+        return default
+
+def normalize_date(raw: str, site: str = None) -> str:
+    """Простейшая нормализация дат — расширяем при необходимости."""
+    if not raw:
+        return None
+    s = raw.strip()
+    # Попытка ISO
+    try:
+        dt = datetime.fromisoformat(s)
+        return dt.isoformat()
+    except Exception:
+        pass
+    # Пример: 'October 1, 2025'
+    try:
+        dt = datetime.strptime(s, "%B %d, %Y")
+        return dt.isoformat()
+    except Exception:
+        pass
+    # Простая обработка '5 hours ago', '2 minutes ago'
+    try:
+        low = s.lower()
+        if "hour" in low:
+            num = int(''.join([c for c in low.split()[0] if c.isdigit()]) or 0)
+            return (datetime.utcnow() - timedelta(hours=num)).isoformat()
+        if "minute" in low:
+            num = int(''.join([c for c in low.split()[0] if c.isdigit()] ) or 0)
+            return (datetime.utcnow() - timedelta(minutes=num)).isoformat()
+        if "today" in low:
+            return datetime.utcnow().date().isoformat()
+    except Exception:
+        pass
+    # fallback — возвращаем оригинал (строку)
+    return s
+
+def send_telegram(bot_token: str, chat_id: str, text: str) -> bool:
+    """Отправляет сообщение в Telegram. Возвращает True если ok."""
+    if not bot_token or not chat_id:
+        logger.warning("Telegram: credentials missing -> skip send")
+        return False
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+    try:
+        r = requests.post(url, data=payload, timeout=15)
+        if r.status_code == 200:
+            logger.info("Telegram: message sent")
+            return True
+        else:
+            logger.warning(f"Telegram: send failed status={r.status_code} resp={r.text}")
+            return False
+    except Exception as e:
+        logger.exception(f"Telegram send exception: {e}")
+        return False
+
+def anchor_xpath_for_selenium(xpath: str) -> str:
+    """Если xpath кончается '/text()', Selenium не сможет найти текст-нод — убираем текстовую часть."""
+    if not xpath:
+        return xpath
+    s = xpath.strip()
+    if s.endswith("/text()"):
+        return s[: s.rfind("/text()")]
+    return s
+
+# ----------------- Основная логика парсера -----------------
 class NewsParser:
-    def __init__(self):
+    def __init__(self, sites_file=SITES_FILE):
+        self.sites_file = sites_file
         self.db = NewsDB()
         self.sites = self.load_sites()
+        # Telegram из окружения
+        self.telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+        self.telegram_user = os.getenv("TELEGRAM_USER_ID", "").strip()  # сюда отправляем статус парсинга
+        # counters
+        self.counters = {
+            "found_total": 0,
+            "added_total": 0,
+            "duplicates": 0,
+            "per_site": {}
+        }
+        self.errors = []
 
     def load_sites(self):
-        if not os.path.exists(SITES_FILE):
-            logger.error(f"Sites config not found at: {SITES_FILE}")
+        if not os.path.exists(self.sites_file):
+            logger.error(f"Sites config not found: {self.sites_file}")
             return {}
         try:
-            with open(SITES_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+            with open(self.sites_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data
         except Exception as e:
-            logger.error(f"Error loading sites.json: {e}")
+            logger.exception(f"Error loading sites.json: {e}")
             return {}
 
-    def setup_selenium(self):
+    def setup_selenium_driver(self):
         if not SELENIUM_AVAILABLE:
-            logger.error("Selenium not available")
+            logger.error("Selenium not available (module import failed)")
             return None
-        options = Options()
-        options.add_argument("--headless=new")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--window-size=1920,1080")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
         try:
-            service = Service(ChromeDriverManager().install())
-            return webdriver.Chrome(service=service, options=options)
-        except Exception as e:
-            logger.error(f"Error creating Chrome webdriver: {e}")
-            return None
-
-    def normalize_date(self, date_str, site="generic"):
-        now = datetime.now()
-        if not date_str:
-            return now.isoformat()
-        try:
-            s = date_str.lower()
-            # hours e.g. "5 hours ago" or "5h"
-            if "hour" in s or (s.endswith("h") and s[:-1].isdigit()):
-                parts = s.split()
-                num = None
-                for p in parts:
-                    if p.isdigit():
-                        num = int(p); break
-                    if p.endswith("h") and p[:-1].isdigit():
-                        num = int(p[:-1]); break
-                if num is None:
-                    num = 1
-                return (now - timedelta(hours=num)).isoformat()
-            if "minute" in s or (s.endswith("m") and s[:-1].isdigit()):
-                parts = s.split()
-                num = None
-                for p in parts:
-                    if p.isdigit():
-                        num = int(p); break
-                    if p.endswith("m") and p[:-1].isdigit():
-                        num = int(p[:-1]); break
-                if num is None:
-                    num = 1
-                return (now - timedelta(minutes=num)).isoformat()
-            if "yesterday" in s:
-                return (now - timedelta(days=1)).isoformat()
-            # try parse "Sep 30, 2025"
+            options = Options()
+            # modern headless flag
             try:
-                return datetime.strptime(date_str, "%b %d, %Y").isoformat()
+                options.add_argument("--headless=new")
             except Exception:
-                return now.isoformat()
-        except Exception:
-            return now.isoformat()
+                options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
+            return driver
+        except Exception as e:
+            logger.exception(f"Selenium driver setup failed: {e}")
+            return None
 
-    def parse_static(self, site_name, config, counters, errors):
-        logger.info(f"[{site_name}] static parse: {config.get('url')}")
-        added = []
+    def parse_site_static(self, site_name: str, cfg: dict):
+        """Парсинг через requests + lxml. Строго anchor + indexed xpaths."""
+        logger.info(f"[{site_name}] static parse: {cfg.get('url')}")
+        url = cfg.get("url")
+        title_t = cfg.get("title_xpath", "")
+        date_t = cfg.get("date_xpath", "")
+        items_xpath = cfg.get("items_xpath", "")
+        max_items = safe_int(cfg.get("max_items"), DEFAULT_MAX_ITEMS)
+        miss_break = safe_int(cfg.get("consecutive_miss_break"), DEFAULT_CONSECUTIVE_MISS_BREAK)
+
+        # валидация: require items_xpath и title_xpath с {news_index}
+        if not items_xpath:
+            msg = f"[{site_name}] CONFIG ERROR: items_xpath is missing"
+            logger.error(msg)
+            self.errors.append(msg)
+            return
+
+        if "{news_index}" not in title_t:
+            msg = f"[{site_name}] CONFIG ERROR: title_xpath must contain '{{news_index}}'"
+            logger.error(msg)
+            self.errors.append(msg)
+            return
+
         try:
-            resp = requests.get(config["url"], headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+            resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
             resp.raise_for_status()
             tree = html.fromstring(resp.content)
+        except Exception as e:
+            msg = f"[{site_name}] HTTP/REQUEST error: {e}"
+            logger.exception(msg)
+            self.errors.append(msg)
+            return
 
-            title_nodes = tree.xpath(config["title_xpath"])
-            date_nodes = tree.xpath(config["date_xpath"])
+        anchors = tree.xpath(items_xpath)
+        if not anchors:
+            msg = f"[{site_name}] Anchor (items_xpath) NOT FOUND on page (static)."
+            logger.error(msg)
+            self.errors.append(msg)
+            return
 
-            counters["found_total"] += max(len(title_nodes), len(date_nodes))
-            for idx, tnode in enumerate(title_nodes):
-                title = tnode.text_content().strip() if tnode is not None else ""
-                link = None
-                try:
+        # начинаем нумеровать новости от 1
+        consecutive_miss = 0
+        idx = 1
+        while idx <= max_items:
+            t_xpath = title_t.format(news_index=idx)
+            d_xpath = date_t.format(news_index=idx) if date_t else None
+            try:
+                t_nodes = tree.xpath(t_xpath)
+            except Exception as e:
+                logger.warning(f"[{site_name}] invalid title xpath at index {idx}: {e}")
+                consecutive_miss += 1
+                if consecutive_miss >= miss_break:
+                    break
+                idx += 1
+                continue
+
+            if not t_nodes:
+                logger.debug(f"[{site_name}] title not found index={idx}")
+                consecutive_miss += 1
+                if consecutive_miss >= miss_break:
+                    logger.info(f"[{site_name}] reached consecutive miss break ({miss_break}), stop")
+                    break
+                idx += 1
+                continue
+
+            # нашли заголовок
+            consecutive_miss = 0
+            tnode = t_nodes[0]
+            # извлекаем текст заголовка
+            try:
+                title = tnode.text_content().strip()
+            except Exception:
+                title = str(tnode).strip()
+
+            # извлекаем ссылку
+            link = None
+            try:
+                if getattr(tnode, "tag", None) == "a" and tnode.get("href"):
                     link = tnode.get("href")
-                except Exception:
-                    link = None
-                if not link:
-                    try:
-                        a = tnode.xpath(".//a")
-                        if a and hasattr(a[0], "get"):
-                            link = a[0].get("href")
-                    except Exception:
-                        link = None
-                if link:
-                    link = urljoin(config["url"], link)
-                raw_date = date_nodes[idx].text_content().strip() if idx < len(date_nodes) else ""
-                pub_date = self.normalize_date(raw_date, site=site_name)
-                if title and link:
-                    is_new = self.db.add_article(site_name, title, link, pub_date)
-                    if is_new:
-                        counters["added_total"] += 1
-                        counters["per_site"][site_name] = counters["per_site"].get(site_name, 0) + 1
-                        added.append({"site": site_name, "title": title, "link": link})
+                else:
+                    a = tnode.xpath(".//a")
+                    if a and getattr(a[0], "get", None):
+                        link = a[0].get("href")
                     else:
-                        counters["duplicates"] += 1
-        except Exception as e:
-            err = f"{site_name} static error: {e}"
-            logger.error(err)
-            errors.append(err)
-        return added
+                        # поднимаемся к родителю <a>, если такой есть
+                        parent = tnode.getparent()
+                        while parent is not None:
+                            if parent.tag == "a" and parent.get("href"):
+                                link = parent.get("href")
+                                break
+                            parent = parent.getparent()
+            except Exception:
+                link = None
 
-    def parse_selenium(self, site_name, config, counters, errors):
-        logger.info(f"[{site_name}] selenium parse: {config.get('url')}")
-        added = []
-        driver = None
-        try:
-            driver = self.setup_selenium()
-            if not driver:
-                errors.append(f"{site_name} selenium: webdriver init failed")
-                return added
-            driver.get(config["url"])
-            time.sleep(config.get("wait", 8))
+            if link:
+                link = urljoin(url, link)
 
-            title_elems = driver.find_elements(By.XPATH, config["title_xpath"])
-            date_elems = driver.find_elements(By.XPATH, config["date_xpath"])
-
-            counters["found_total"] += max(len(title_elems), len(date_elems))
-            for idx, te in enumerate(title_elems):
+            # дата
+            raw_date = ""
+            if d_xpath:
                 try:
-                    title = te.text.strip()
-                    link = te.get_attribute("href")
-                    if not link:
-                        try:
-                            a = te.find_element(By.XPATH, ".//a")
-                            link = a.get_attribute("href")
-                        except:
-                            link = None
-                    if link:
-                        link = urljoin(config["url"], link)
-                    raw_date = date_elems[idx].text.strip() if idx < len(date_elems) else ""
-                    pub_date = self.normalize_date(raw_date, site=site_name)
-                    if title and link:
-                        is_new = self.db.add_article(site_name, title, link, pub_date)
-                        if is_new:
-                            counters["added_total"] += 1
-                            counters["per_site"][site_name] = counters["per_site"].get(site_name, 0) + 1
-                            added.append({"site": site_name, "title": title, "link": link})
+                    d_nodes = tree.xpath(d_xpath)
+                    if d_nodes:
+                        # d_nodes может вернуть элемент или текст
+                        if hasattr(d_nodes[0], "text_content"):
+                            raw_date = d_nodes[0].text_content().strip()
                         else:
-                            counters["duplicates"] += 1
-                except Exception as e_item:
-                    logger.warning(f"[{site_name}] item parse warning: {e_item}")
+                            raw_date = str(d_nodes[0]).strip()
+                except Exception:
+                    raw_date = ""
+
+            pub_date = normalize_date(raw_date, site_name)
+
+            # добавление в БД
+            if title and link:
+                added = self.db.add_article(site_name, title, link, pub_date)
+                self.counters["found_total"] += 1
+                if added:
+                    self.counters["added_total"] += 1
+                    self.counters["per_site"][site_name] = self.counters["per_site"].get(site_name, 0) + 1
+                else:
+                    self.counters["duplicates"] += 1
+            else:
+                logger.debug(f"[{site_name}] skip entry idx={idx} (title/link missing)")
+
+            idx += 1
+
+    def parse_site_selenium(self, site_name: str, cfg: dict):
+        """Парсинг через Selenium (динамические сайты)."""
+        logger.info(f"[{site_name}] selenium parse: {cfg.get('url')}")
+        url = cfg.get("url")
+        title_t = cfg.get("title_xpath", "")
+        date_t = cfg.get("date_xpath", "")
+        items_xpath = cfg.get("items_xpath", "")
+        max_items = safe_int(cfg.get("max_items"), DEFAULT_MAX_ITEMS)
+        miss_break = safe_int(cfg.get("consecutive_miss_break"), DEFAULT_CONSECUTIVE_MISS_BREAK)
+        wait = safe_int(cfg.get("wait"), SELENIUM_WAIT_DEFAULT)
+
+        if not items_xpath:
+            msg = f"[{site_name}] CONFIG ERROR: items_xpath is missing"
+            logger.error(msg)
+            self.errors.append(msg)
+            return
+
+        if "{news_index}" not in title_t:
+            msg = f"[{site_name}] CONFIG ERROR: title_xpath must contain '{{news_index}}'"
+            logger.error(msg)
+            self.errors.append(msg)
+            return
+
+        driver = self.setup_selenium_driver()
+        if not driver:
+            msg = f"[{site_name}] Selenium driver init failed"
+            logger.error(msg)
+            self.errors.append(msg)
+            return
+
+        try:
+            driver.get(url)
+            time.sleep(wait)
         except Exception as e:
-            err = f"{site_name} selenium error: {e}"
-            logger.error(err)
-            errors.append(err)
-        finally:
-            if driver:
+            msg = f"[{site_name}] Selenium navigation error: {e}"
+            logger.exception(msg)
+            self.errors.append(msg)
+            try:
+                driver.quit()
+            except Exception:
+                pass
+            return
+
+        # корректируем items_xpath для selenium, если он заканчивался на /text()
+        anchor_xpath = anchor_xpath_for_selenium(items_xpath)
+        anchors = []
+        try:
+            anchors = driver.find_elements(By.XPATH, anchor_xpath)
+        except Exception as e:
+            logger.warning(f"[{site_name}] anchor xpath search failed in selenium: {e}")
+            anchors = []
+
+        if not anchors:
+            msg = f"[{site_name}] Anchor (items_xpath) NOT FOUND on page (selenium)."
+            logger.error(msg)
+            self.errors.append(msg)
+            try:
+                driver.quit()
+            except Exception:
+                pass
+            return
+
+        # перебираем индексы
+        idx = 1
+        consecutive_miss = 0
+        while idx <= max_items:
+            t_xpath = title_t.format(news_index=idx)
+            d_xpath = date_t.format(news_index=idx) if date_t else None
+            try:
+                title_elems = driver.find_elements(By.XPATH, t_xpath)
+            except Exception as e:
+                logger.warning(f"[{site_name}] invalid title xpath at index {idx} in selenium: {e}")
+                consecutive_miss += 1
+                if consecutive_miss >= miss_break:
+                    break
+                idx += 1
+                continue
+
+            if not title_elems:
+                logger.debug(f"[{site_name}] selenium: title not found index={idx}")
+                consecutive_miss += 1
+                if consecutive_miss >= miss_break:
+                    logger.info(f"[{site_name}] reached consecutive miss break ({miss_break}) in selenium, stop")
+                    break
+                idx += 1
+                continue
+
+            consecutive_miss = 0
+            te = title_elems[0]
+            try:
+                title = te.text.strip()
+            except Exception:
+                title = ""
+
+            link = None
+            try:
+                if te.tag_name.lower() == "a":
+                    link = te.get_attribute("href")
+                else:
+                    a = te.find_elements(By.XPATH, ".//a")
+                    if a:
+                        link = a[0].get_attribute("href")
+                    else:
+                        # пробуем подняться по DOM к родителю <a>
+                        parent = te
+                        for i in range(5):
+                            try:
+                                parent = parent.find_element(By.XPATH, "..")
+                            except Exception:
+                                parent = None
+                            if parent is None:
+                                break
+                            try:
+                                if parent.tag_name.lower() == "a":
+                                    link = parent.get_attribute("href")
+                                    break
+                            except Exception:
+                                pass
+            except Exception:
+                link = None
+
+            if link:
+                link = urljoin(url, link)
+
+            raw_date = ""
+            if d_xpath:
                 try:
-                    driver.quit()
-                except:
-                    pass
-        return added
+                    date_elems = driver.find_elements(By.XPATH, d_xpath)
+                    if date_elems:
+                        raw_date = date_elems[0].text.strip()
+                except Exception:
+                    raw_date = ""
+
+            pub_date = normalize_date(raw_date, site_name)
+
+            if title and link:
+                added = self.db.add_article(site_name, title, link, pub_date)
+                self.counters["found_total"] += 1
+                if added:
+                    self.counters["added_total"] += 1
+                    self.counters["per_site"][site_name] = self.counters["per_site"].get(site_name, 0) + 1
+                else:
+                    self.counters["duplicates"] += 1
+            else:
+                logger.debug(f"[{site_name}] selenium skip entry idx={idx}: title/link missing")
+
+            idx += 1
+
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
     def run(self):
+        """Главная точка: перебираем сайты из конфигa и парсим."""
         start_ts = time.time()
-        start_dt = datetime.now()
-        counters = {"found_total": 0, "added_total": 0, "duplicates": 0, "per_site": {}}
-        errors = []
-        all_added = []
+        if not self.sites:
+            logger.error("No sites to parse (sites.json empty or missing)")
+            return self._finalize_and_report(start_ts)
 
         for site_name, cfg in self.sites.items():
+            cfg = dict(cfg)  # копия
+            # задаём значения по умолчанию
+            if "max_items" not in cfg:
+                cfg["max_items"] = DEFAULT_MAX_ITEMS
+            if "consecutive_miss_break" not in cfg:
+                cfg["consecutive_miss_break"] = DEFAULT_CONSECUTIVE_MISS_BREAK
+
             mode = cfg.get("mode", "selenium")
-            if mode == "static":
-                added = self.parse_static(site_name, cfg, counters, errors)
-            elif mode == "selenium":
-                added = self.parse_selenium(site_name, cfg, counters, errors)
-            elif mode == "api":
-                logger.info(f"[{site_name}] API mode not implemented yet")
-                added = []
-            else:
-                logger.warning(f"[{site_name}] Unknown mode: {mode}")
-                added = []
-            all_added.extend(added)
+            try:
+                if mode == "static":
+                    self.parse_site_static(site_name, cfg)
+                elif mode == "selenium":
+                    self.parse_site_selenium(site_name, cfg)
+                else:
+                    msg = f"[{site_name}] Unknown parsing mode: {mode}"
+                    logger.error(msg)
+                    self.errors.append(msg)
+            except Exception as e:
+                msg = f"[{site_name}] top-level parse exception: {e}"
+                logger.exception(msg)
+                self.errors.append(msg)
 
         elapsed = int(time.time() - start_ts)
-        added_total = counters["added_total"]
-        found_total = counters["found_total"]
-        duplicates = counters["duplicates"]
-        per_site = counters["per_site"]
+        return self._finalize_and_report(start_ts)
 
-        # Telegram message
-        per_site_lines = [f"- {s}: {per_site.get(s, 0)}" for s in sorted(self.sites.keys())]
-        status_line = "✅ Парсинг завершён" if not errors else "⚠️ Парсинг завершён (есть ошибки)"
-        now_str = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+    def _finalize_and_report(self, start_ts):
+        elapsed = int(time.time() - start_ts)
+        found = self.counters.get("found_total", 0)
+        added = self.counters.get("added_total", 0)
+        dups = self.counters.get("duplicates", 0)
+        per_site = self.counters.get("per_site", {})
 
-        msg_lines = []
-        msg_lines.append(f"📰 Новые новости: {added_total} — {status_line}")
-        msg_lines.append(f"🗓 Дата и время: {now_str}")
-        msg_lines.append(f"⏱ Время работы скрипта: {elapsed} секунд")
-        msg_lines.append(f"Найдено (в DOM): {found_total}")
-        msg_lines.append(f"Новые новости: {added_total}")
-        msg_lines.extend(per_site_lines)
-        msg_lines.append(f"Дубликаты: {duplicates}")
-        msg_lines.append(f"ВСЕГО: {added_total}")
-        if errors:
-            msg_lines.append("")
-            msg_lines.append("Ошибки:")
-            for err in errors:
-                msg_lines.append(f"- {err}")
-        message_text = "\n".join(msg_lines)
-        tokens_est = estimate_tokens(message_text)
-        message_text += f"\n\n[Токены в сообщении (approx): ~{tokens_est}]"
-
-        sent = send_telegram_message(message_text)
-        if sent:
-            logger.info("Telegram: message sent")
+        # Сформируем сообщение для Telegram (первое, что видно — количество новых)
+        lines = []
+        lines.append(f"🚀 {added} новостей — <b>Парсинг завершён</b>")
+        lines.append(datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"))
+        lines.append(f"Время работы скрипта: {elapsed} сек.")
+        lines.append(f"Новые новости: {added}")
+        if per_site:
+            for s, c in per_site.items():
+                lines.append(f"- {s}: {c}")
+        lines.append(f"ВСЕГО: {found} (дубликатов: {dups})")
+        if self.errors:
+            lines.append("")
+            lines.append("<b>Ошибки парсинга:</b>")
+            for e in self.errors:
+                lines.append(f"- {e}")
+        # Информация о Telegram-отправке
+        telegram_sent = False
+        if self.telegram_token and self.telegram_user:
+            text = "\n".join(lines)
+            telegram_sent = send_telegram(self.telegram_token, self.telegram_user, text)
         else:
-            logger.warning("Telegram: message NOT sent")
+            logger.warning("TELEGRAM_BOT_TOKEN или TELEGRAM_USER_ID не заданы. Пропускаем отправку Telegram.")
+            self.errors.append("Telegram credentials missing or empty.")
+        # Лог финального результата
+        logger.info(f"Found total: {found}, Added new: {added}, Duplicates: {dups}, Per site: {per_site}, Errors: {len(self.errors)}, Telegram sent: {telegram_sent}, Elapsed: {elapsed}s")
 
-        # Логирование в файл уже производится через logger
-        logger.info(f"Found total: {found_total}, Added new: {added_total}, Duplicates: {duplicates}")
-        logger.info(f"Per site: {per_site}")
-        logger.info(f"Elapsed: {elapsed}s")
-
-        return {
-            "found_total": found_total,
-            "added_total": added_total,
-            "duplicates": duplicates,
+        # Вернём структуру результатов (можно использовать в workflow)
+        result = {
+            "found_total": found,
+            "added_total": added,
+            "duplicates": dups,
             "per_site": per_site,
-            "errors": errors,
-            "telegram_sent": sent,
-            "message_tokens_est": tokens_est,
+            "errors": len(self.errors),
+            "telegram_sent": bool(telegram_sent),
             "elapsed": elapsed
         }
+        return result
 
-# ---------- main ----------
-def main():
-    parser = NewsParser()
-    result = parser.run()
-    parser.db.close()
-    # Краткое резюме для логов Actions
-    print("=== PARSER RESULT ===")
-    print(json.dumps({
-        "found_total": result["found_total"],
-        "added_total": result["added_total"],
-        "duplicates": result["duplicates"],
-        "per_site": result["per_site"],
-        "errors": len(result["errors"]),
-        "telegram_sent": result["telegram_sent"],
-        "message_tokens_est": result["message_tokens_est"],
-        "elapsed": result["elapsed"]
-    }, ensure_ascii=False, indent=2))
-
+# ----------------- CLI -----------------
 if __name__ == "__main__":
-    main()
+    parser = NewsParser()
+    res = parser.run()
+    # Логируем JSON-результат (чтобы Actions мог легче прочитать)
+    try:
+        import json as _json
+        with open(os.path.join(BASE_DIR, "parser_run_result.json"), "w", encoding="utf-8") as fh:
+            fh.write(_json.dumps(res, ensure_ascii=False, indent=2))
+    except Exception:
+        pass
+    # Закрываем БД
+    try:
+        parser.db.close()
+    except Exception:
+        pass
+    # exit
+    logger.info("Parser finished.")
