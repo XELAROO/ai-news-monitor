@@ -35,13 +35,13 @@ jobs:
       run: python news_parser_db.py
 
     - name: Upload DB artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: news-db
         path: news.db
 
     - name: Upload parser log
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: news-parser-log
         path: news_parser.log
