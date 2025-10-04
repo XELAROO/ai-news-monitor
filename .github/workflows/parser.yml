@@ -29,7 +29,7 @@ jobs:
         pip install -r requirements.txt
         
     # перед парсингом
-    - name: Download previous DB
+    - name: Download news.db
       uses: actions/download-artifact@v4
       with:
         name: news-db
@@ -41,7 +41,7 @@ jobs:
         TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
       run: python news_parser_db.py
 
-    - name: Upload DB artifact
+    - name: Upload news.db
       uses: actions/upload-artifact@v4
       with:
         name: news-db
