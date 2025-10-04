@@ -34,6 +34,13 @@ jobs:
       with:
         name: news-db
     
+    - name: Check file existence
+      run: |
+        if [ ! -f "news.db" ]; then
+          echo "Файл news.db не найден!"
+          exit 1
+        fi
+    
     - name: Run parser
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
