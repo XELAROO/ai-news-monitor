@@ -33,7 +33,6 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: news-db
-        path: .
     
     - name: Run parser
       env:
