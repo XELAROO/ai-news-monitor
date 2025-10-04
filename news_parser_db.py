@@ -43,7 +43,7 @@ LOG_FILE = os.path.join(BASE_DIR, "news_parser.log")
 
 DEFAULT_MAX_ITEMS = 100
 DEFAULT_CONSECUTIVE_MISS_BREAK = 3
-SELENIUM_WAIT_DEFAULT = 6  # seconds для загрузки страницы
+SELENIUM_WAIT_DEFAULT = 10  # seconds для загрузки страницы
 
 # ----------------- Логирование -----------------
 logger = logging.getLogger("news_parser")
@@ -602,3 +602,4 @@ if __name__ == "__main__":
         pass
     # exit
     logger.info("Parser finished.")
+
