@@ -27,11 +27,18 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
+        
+    # перед парсингом
+    - name: Download previous DB
+      uses: actions/download-artifact@v4
+      with:
+        name: news-db
+        path: .
+    
     - name: Run parser
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
       run: python news_parser_db.py
 
     - name: Upload DB artifact
